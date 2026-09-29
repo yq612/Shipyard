@@ -87,8 +87,10 @@ button.step:hover .step__no { color: inherit; }
 /* 转圈：终端风的点阵 spinner，只在执行中出现 */
 .spin { display: inline-block; width: 1ch; text-align: center; color: var(--c-accent-ink); }
 
-/* 复选框：方块，选中填绿 */
-.check { appearance: none; flex: none; display: inline-grid; place-items: center; width: 18px; height: 18px; margin: 0; border: var(--bw) solid var(--c-line-strong); background: var(--c-screen); cursor: pointer; transition: var(--tr-hover); }
+/* 复选框：方块，选中填绿。
+   inline-grid 的基线取第一个子项：勾选后多出 ::after，基线会移动、行高跟着变，
+   表格就会抖一下，所以固定按中线对齐 */
+.check { appearance: none; flex: none; display: inline-grid; place-items: center; width: 18px; height: 18px; margin: 0; vertical-align: middle; border: var(--bw) solid var(--c-line-strong); background: var(--c-screen); cursor: pointer; transition: var(--tr-hover); }
 .check:hover { border-color: var(--c-accent-ink); }
 .check:checked { background: var(--c-accent); border-color: var(--c-accent); }
 .check:checked::after { content: ""; width: 6px; height: 6px; background: var(--c-on-accent); }
