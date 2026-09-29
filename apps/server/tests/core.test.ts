@@ -79,11 +79,11 @@ describe("deployer", () => {
 
   test("buildRemoteScript performs an atomic extract-and-swap", () => {
     expect(buildRemoteScript("/home/topup-web/quickbuypk/dist", "/tmp/s/dist.tar.gz", "/tmp/s")).toBe(
-      "rm -rf /home/topup-web/quickbuypk/dist.tmp && " +
-        "mkdir -p /home/topup-web/quickbuypk/dist.tmp && " +
-        "tar -xzf /tmp/s/dist.tar.gz -C /home/topup-web/quickbuypk/dist.tmp && " +
+      "rm -rf /home/topup-web/quickbuypk/dist.tmp-s && " +
+        "mkdir -p /home/topup-web/quickbuypk/dist.tmp-s && " +
+        "tar -xzf /tmp/s/dist.tar.gz -C /home/topup-web/quickbuypk/dist.tmp-s && " +
         "rm -rf /home/topup-web/quickbuypk/dist && " +
-        "mv /home/topup-web/quickbuypk/dist.tmp /home/topup-web/quickbuypk/dist && " +
+        "mv /home/topup-web/quickbuypk/dist.tmp-s /home/topup-web/quickbuypk/dist && " +
         "rm -rf /tmp/s",
     );
   });
@@ -92,7 +92,7 @@ describe("deployer", () => {
     const script = buildRemoteScript("/srv/dist", "/tmp/s/dist.tar.gz", "/tmp/s", true);
     expect(script).toContain("rm -rf /srv/dist.prev && { [ ! -e /srv/dist ] || mv /srv/dist /srv/dist.prev; }");
     expect(script).not.toContain("rm -rf /srv/dist &&");
-    expect(script).toContain("mv /srv/dist.tmp /srv/dist");
+    expect(script).toContain("mv /srv/dist.tmp-s /srv/dist");
   });
 
   test("shellQuote leaves safe paths alone and quotes the rest", () => {

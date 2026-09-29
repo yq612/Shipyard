@@ -1,6 +1,7 @@
 import type { CommitInfo, EnvOutcome, LogStream, Stage, StageResult } from "@shipyard/shared";
 import { STAGE_NAMES, formatDuration, shortSha } from "@shipyard/shared";
 import { CancelledError } from "./process.ts";
+import { releaseTempPath, removeTempPath, trackTempPath } from "./temp.ts";
 import type { EnvSpec, LogFn, SshCredentials, UploadTarget } from "./types.ts";
 
 export function buildUploadTarget(spec: EnvSpec, creds: SshCredentials): UploadTarget {
@@ -102,6 +103,7 @@ export async function runPipeline(
 
   try {
     tmp = await deps.mkdtemp();
+    trackTempPath(tmp);
     let distPath = "";
     const cont =
       (await step("clone", async (ctx) => {
@@ -127,7 +129,13 @@ export async function runPipeline(
     error = error ?? (e instanceof Error ? e.message : String(e));
     logFor(undefined)("system", `✗ 准备临时目录失败：${error}`);
   } finally {
-    if (tmp) await deps.rmrf(tmp).catch(() => {});
+    if (tmp) {
+      try {
+        await removeTempPath(tmp, deps.rmrf, (message) => logFor(undefined)("system", message));
+      } finally {
+        releaseTempPath(tmp);
+      }
+    }
   }
 
   const ok = failedStage === undefined;

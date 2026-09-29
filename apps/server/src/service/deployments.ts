@@ -104,6 +104,7 @@ export class DeploymentService {
   private finalizing = new Set<Promise<void>>();
   private closing = new Set<number>();
   private shuttingDown = false;
+  private persistenceFault = false;
 
   constructor(deps: ServiceDeps) {
     this.repo = deps.repo;
@@ -124,7 +125,7 @@ export class DeploymentService {
       queuedEnvs: this.scheduler.queuedCount,
       activeDeployments: [...this.runtimes.keys()],
       maxConcurrent: this.scheduler.maxConcurrent,
-      shuttingDown: this.shuttingDown,
+      shuttingDown: this.shuttingDown || this.persistenceFault,
     };
   }
 
@@ -255,6 +256,7 @@ export class DeploymentService {
   // --------------------------------------------------------------- commands
 
   create(countryCode: string, envNames: string[], operator: Operator, retryOf: number | null = null): CreatedDeployment {
+    if (this.persistenceFault) throw new ServiceError("SHUTTING_DOWN", 503, "发布记录保存异常，已暂停新发布；请检查存储并核对发布结果后重启服务");
     if (this.shuttingDown) throw new ServiceError("SHUTTING_DOWN", 503, "服务正在停止，暂不接受新的发布");
 
     let config: AppConfig;
@@ -462,37 +464,78 @@ export class DeploymentService {
     }
   }
 
-  private emit(rt: Runtime, event: ProgressEvent): void {
+  private warn(id: number, operation: string, error: unknown): void {
+    console.warn(`[deploy] #${id} ${operation}：${errorSummary(error instanceof Error ? error.message : String(error))}`);
+  }
+
+  // A broken observer must not rerun a pipeline or change its real outcome.
+  // Stop accepting new work if its durable record can no longer be trusted.
+  private persist(rt: Runtime, operation: string, write: () => void): boolean {
+    try {
+      write();
+      return true;
+    } catch (error) {
+      this.persistenceFault = true;
+      this.warn(rt.id, `${operation}，已暂停新发布，请核对实际发布结果`, error);
+      return false;
+    }
+  }
+
+  private emit(rt: Runtime, event: ProgressEvent, persist = true): number {
     const seq = ++rt.seq;
-    this.repo.appendEvent(rt.id, seq, event);
     rt.state = reduceProgress(rt.state, event);
+    if (persist) this.persist(rt, "保存进度失败", () => this.repo.appendEvent(rt.id, seq, event));
     this.publish(rt.id, { type: "progress", seq, event });
+    return seq;
   }
 
   private log(rt: Runtime, idx: number, stage: Stage | undefined, stream: LogStream, text: string): void {
-    this.logs.append(rt.id, idx, { ts: this.clock(), stream, ...(stage ? { stage } : {}), text });
+    try {
+      this.logs.append(rt.id, idx, { ts: this.clock(), stream, ...(stage ? { stage } : {}), text: redactUrl(text) });
+    } catch (error) {
+      this.warn(rt.id, `写入环境 ${idx} 日志失败`, error);
+    }
+  }
+
+  private releaseEnv(rt: Runtime, idx: number): void {
+    rt.controllers.delete(idx);
+    const spec = rt.specs[idx]!;
+    const key = lockKey(spec.host, spec.remotePath);
+    if (this.locks.get(key)?.deploymentId === rt.id) this.locks.delete(key);
+    // Closing is independent of final log writes and database transactions.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        this.logs.end(rt.id, idx);
+        break;
+      } catch (error) {
+        if (attempt === 1) this.warn(rt.id, `关闭环境 ${idx} 日志失败`, error);
+      }
+    }
   }
 
   private refreshStatus(rt: Runtime): void {
     const status = deploymentStatusOf(rt.state.tasks.map((t) => t.status));
     if (status === rt.status) return;
     rt.status = status;
-    this.repo.updateDeployment(rt.id, { status });
-    const summary = this.repo.summary(rt.id);
-    if (summary) this.publish(rt.id, { type: "deployment", summary });
+    this.persist(rt, "保存任务状态失败", () => {
+      this.repo.updateDeployment(rt.id, { status });
+      const summary = this.repo.summary(rt.id);
+      if (summary) this.publish(rt.id, { type: "deployment", summary });
+    });
   }
 
   // Records the final event of one env, persists its row, frees its lock.
   private settleEnv(rt: Runtime, idx: number, event: ProgressEvent, patch: Parameters<Repository["updateEnv"]>[2]): void {
-    this.repo.transaction(() => {
-      this.emit(rt, event);
-      this.repo.updateEnv(rt.id, idx, patch);
-    });
-    const spec = rt.specs[idx]!;
-    const key = lockKey(spec.host, spec.remotePath);
-    if (this.locks.get(key)?.deploymentId === rt.id) this.locks.delete(key);
-    this.logs.end(rt.id, idx);
-    this.refreshStatus(rt);
+    try {
+      const seq = this.emit(rt, event, false);
+      this.persist(rt, "保存环境结果失败", () => this.repo.transaction(() => {
+        this.repo.appendEvent(rt.id, seq, event);
+        this.repo.updateEnv(rt.id, idx, { ...patch, status: rt.state.tasks[idx]!.status });
+      }));
+    } finally {
+      this.releaseEnv(rt, idx);
+      this.refreshStatus(rt);
+    }
   }
 
   private async runEnv(rt: Runtime, idx: number): Promise<void> {
@@ -500,7 +543,13 @@ export class DeploymentService {
     const ctl = new AbortController();
     rt.controllers.set(idx, ctl);
     const startedAt = this.clock();
-    this.repo.updateEnv(rt.id, idx, { status: "running", startedAt });
+    if (this.persistenceFault || !this.persist(rt, "保存环境开始状态失败", () => this.repo.updateEnv(rt.id, idx, { status: "running", startedAt }))) {
+      this.settleEnv(rt, idx, { type: "envInterrupted", index: idx, at: this.clock() }, {
+        status: "interrupted", finishedAt: this.clock(), errorSummary: "发布记录保存异常，流水线未启动",
+      });
+      this.maybeFinish(rt);
+      return;
+    }
 
     let outcome: EnvOutcome;
     try {
@@ -514,7 +563,7 @@ export class DeploymentService {
             this.emit(rt, { type: "pipelineStart", index: idx, at: this.clock() });
             if (!rt.started) {
               rt.started = true;
-              this.repo.updateDeployment(rt.id, { startedAt: this.clock() });
+              this.persist(rt, "保存任务开始时间失败", () => this.repo.updateDeployment(rt.id, { startedAt: this.clock() }));
             }
             this.refreshStatus(rt);
           },
@@ -522,7 +571,7 @@ export class DeploymentService {
           onStageDone: (stage, ms) => this.emit(rt, { type: "stageDone", index: idx, stage, ms, at: this.clock() }),
           onCommit: (commit) => {
             this.emit(rt, { type: "commit", index: idx, sha: commit.sha, message: commit.message, at: this.clock() });
-            this.repo.updateEnv(rt.id, idx, { commitSha: commit.sha, commitMessage: commit.message });
+            this.persist(rt, "保存提交信息失败", () => this.repo.updateEnv(rt.id, idx, { commitSha: commit.sha, commitMessage: commit.message }));
           },
           onLog: (stage, stream, text) => this.log(rt, idx, stage, stream, text),
         },
@@ -530,11 +579,12 @@ export class DeploymentService {
       );
     } catch (e) {
       // runPipeline never throws; this only guards bugs in the hooks above.
-      outcome = { ok: false, stages: [], failedStage: "clone", error: e instanceof Error ? e.message : String(e), totalMs: this.clock() - startedAt };
+      outcome = { ok: false, stages: [], failedStage: "clone", error: redactUrl(e instanceof Error ? e.message : String(e)), totalMs: this.clock() - startedAt };
     } finally {
       rt.controllers.delete(idx);
     }
 
+    if (outcome.error) outcome = { ...outcome, error: redactUrl(outcome.error) };
     const finishedAt = this.clock();
     const base = {
       finishedAt,
@@ -566,29 +616,44 @@ export class DeploymentService {
     this.runtimes.delete(rt.id);
     this.refreshStatus(rt);
     const finishedAt = this.clock();
-    this.repo.updateDeployment(rt.id, { finishedAt });
+    this.persist(rt, "保存任务结束时间失败", () => this.repo.updateDeployment(rt.id, { finishedAt }));
     const p = this.finalize(rt).finally(() => this.finalizing.delete(p));
     this.finalizing.add(p);
   }
 
   private async finalize(rt: Runtime): Promise<void> {
+    try {
+      await this.persistNotification(rt);
+    } catch (error) {
+      this.persistenceFault = true;
+      this.warn(rt.id, "记录最终结果失败，已暂停新发布，请核对实际发布结果", error);
+    } finally {
+      this.closing.delete(rt.id);
+      this.publish(rt.id, { type: "end" });
+      this.listeners.delete(rt.id);
+    }
+  }
+
+  private async persistNotification(rt: Runtime): Promise<void> {
+    if (this.persistenceFault) {
+      this.repo.updateDeployment(rt.id, { notifyStatus: "skipped", notifyError: "发布记录保存异常，未推送" });
+      return;
+    }
     const config = this.config.get();
     const feishu = config.notify?.feishu;
     const summary = this.repo.summary(rt.id)!;
     if (feishu?.webhook) {
       const input = buildCardInput(summary, this.repo.envs(rt.id), config.server.publicUrl);
       const res = await this.notify(feishu.webhook, buildFeishuCard(input), feishu.secret).catch(
-        (e): SendResult => ({ ok: false, error: e instanceof Error ? e.message : String(e) }),
+        (e): SendResult => ({ ok: false, error: redactUrl(e instanceof Error ? e.message : String(e)) }),
       );
-      this.repo.updateDeployment(rt.id, { notifyStatus: res.ok ? "sent" : "failed", notifyError: res.ok ? null : (res.error ?? "未知错误") });
-      if (!res.ok) console.warn(`[deploy] #${rt.id} 飞书通知发送失败：${res.error}`);
+      this.repo.updateDeployment(rt.id, { notifyStatus: res.ok ? "sent" : "failed", notifyError: res.ok ? null : errorSummary(res.error ?? "未知错误") });
+      if (!res.ok) this.warn(rt.id, "飞书通知发送失败", res.error);
     } else {
       this.repo.updateDeployment(rt.id, { notifyStatus: "skipped", notifyError: null });
     }
     const final = this.repo.summary(rt.id);
-    this.closing.delete(rt.id);
     if (final) this.publish(rt.id, { type: "deployment", summary: final });
-    this.publish(rt.id, { type: "end" });
     console.log(`[deploy] #${rt.id} finished: ${final?.status} (${final?.doneCount}/${final?.envCount})`);
   }
 }

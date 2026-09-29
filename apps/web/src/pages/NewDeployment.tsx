@@ -8,6 +8,7 @@ import { CountryCard } from "../components/CountryCard.tsx";
 import { useCanExecute } from "../components/Layout.tsx";
 import { CheckIcon, Loading, Notice, PageHead, Steps, type StepState } from "../components/ui.tsx";
 import { useOperatorName } from "../lib/operator.ts";
+import { pollEvery, usePollStopped } from "../lib/poll.ts";
 import { formatDateTime } from "../lib/time.ts";
 
 type Step = 0 | 1 | 2;
@@ -54,7 +55,8 @@ function useWizardParams() {
 }
 
 export function NewDeployment() {
-  const config = useQuery({ queryKey: ["config"], queryFn: api.config, refetchInterval: 5000 });
+  const config = useQuery({ queryKey: ["config"], queryFn: api.config, refetchInterval: pollEvery(5000) });
+  const configStopped = usePollStopped(["config"]);
   const { country, envs, step, update } = useWizardParams();
   const current = config.data?.countries.find((c) => c.code === country);
 
@@ -83,10 +85,13 @@ export function NewDeployment() {
         </Notice>
       )}
 
-      {config.isLoading ? (
+      {config.isError ? (
+        <Notice tone="err">
+          读取配置失败：{errorMessage(config.error)}
+          {configStopped && "。连续多次失败，已停止自动刷新，刷新页面后重试"}
+        </Notice>
+      ) : !config.data ? (
         <Loading text="读取配置" />
-      ) : config.isError ? (
-        <Notice tone="err">读取配置失败：{errorMessage(config.error)}</Notice>
       ) : effectiveStep === 0 ? (
         <CountryStep config={config.data!} selected={country} onPick={(code) => update({ country: code, envs: code === country ? envs : [], step: 1 })} />
       ) : effectiveStep === 1 ? (
@@ -297,6 +302,7 @@ function PlanStep({ country, envNames, onBack }: { country: CountryView; envName
     onSuccess: ({ id }) => {
       void queryClient.invalidateQueries({ queryKey: ["config"] });
       void queryClient.invalidateQueries({ queryKey: ["deployments"] });
+      void queryClient.invalidateQueries({ queryKey: ["status"] });
       navigate(`/deployments/${id}`);
     },
     onError: () => {

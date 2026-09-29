@@ -10,11 +10,15 @@ COPY packages/shared packages/shared
 COPY apps/web apps/web
 RUN bun run --cwd apps/web build
 
-# ---- runtime: Bun + git + tar, server source + built UI ----
-FROM oven/bun:1 AS runtime
+# ---- runtime: Bun for Shipyard, real Node.js for downstream build CLIs ----
+# Without Node, `bun run build` falls back to Bun for node-shebang tools such
+# as Nuxt 2, whose jiti/follow-redirects stack relies on V8 Error behaviour.
+FROM node:22-bookworm-slim AS runtime
+COPY --from=web /usr/local/bin/bun /usr/local/bin/bun
 RUN apt-get update \
  && apt-get install -y --no-install-recommends git ca-certificates tar \
- && rm -rf /var/lib/apt/lists/*
+ && rm -rf /var/lib/apt/lists/* \
+ && ln -s /usr/local/bin/bun /usr/local/bin/bunx
 WORKDIR /app
 ENV NODE_ENV=production \
     DATA_DIR=/data \

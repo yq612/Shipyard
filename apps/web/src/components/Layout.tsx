@@ -1,10 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { NavLink, Outlet, useLocation } from "react-router";
+import type { ServerStatus } from "@shipyard/shared";
 import { api } from "../api.ts";
+import { pollEvery } from "../lib/poll.ts";
 import { ThemeSwitch } from "./ThemeSwitch.tsx";
 
 function useWhoami() {
-  return useQuery({ queryKey: ["whoami"], queryFn: api.whoami, staleTime: 60_000, refetchInterval: 60_000 });
+  return useQuery({ queryKey: ["whoami"], queryFn: api.whoami, staleTime: 60_000, refetchInterval: pollEvery(60_000) });
 }
 
 export function useCanExecute(): { allowed: boolean; ip: string | undefined; loading: boolean } {
@@ -14,7 +16,13 @@ export function useCanExecute(): { allowed: boolean; ip: string | undefined; loa
 
 function Topbar() {
   const who = useWhoami();
-  const status = useQuery({ queryKey: ["status"], queryFn: api.status, refetchInterval: 3000, retry: false });
+  // Only the counters in this bar use it: poll fast while something runs, slowly when idle.
+  const status = useQuery({
+    queryKey: ["status"],
+    queryFn: api.status,
+    refetchInterval: pollEvery<ServerStatus>((q) => (q.state.data && q.state.data.runningEnvs + q.state.data.queuedEnvs > 0 ? 3000 : 15000)),
+    retry: false,
+  });
   const { pathname } = useLocation();
   const onDeployments = pathname.startsWith("/deployments");
 

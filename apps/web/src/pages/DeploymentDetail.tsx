@@ -28,6 +28,7 @@ export function DeploymentDetail() {
   const { detail, clockSkew, conn, notFound } = useDeploymentStream(id, () => {
     void queryClient.invalidateQueries({ queryKey: ["deployments"] });
     void queryClient.invalidateQueries({ queryKey: ["config"] });
+    void queryClient.invalidateQueries({ queryKey: ["status"] });
   });
   const [selected, setSelected] = useState<number | null>(null);
 
@@ -266,6 +267,7 @@ function ResultPanel({ detail, onViewLog }: { detail: Detail; onViewLog: (i: num
     mutationFn: () => api.retry(d.id, operator.trim() || undefined),
     onSuccess: ({ id }) => {
       void queryClient.invalidateQueries({ queryKey: ["deployments"] });
+      void queryClient.invalidateQueries({ queryKey: ["status"] });
       navigate(`/deployments/${id}`);
     },
   });
@@ -273,6 +275,7 @@ function ResultPanel({ detail, onViewLog }: { detail: Detail; onViewLog: (i: num
     mutationFn: () => api.create({ countryCode: d.countryCode, envNames: d.envNames, operatorName: operator.trim() || undefined }),
     onSuccess: ({ id }) => {
       void queryClient.invalidateQueries({ queryKey: ["deployments"] });
+      void queryClient.invalidateQueries({ queryKey: ["status"] });
       navigate(`/deployments/${id}`);
     },
   });

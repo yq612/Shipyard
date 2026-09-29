@@ -1,10 +1,11 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearchParams } from "react-router";
-import type { DeploymentStatus, DeploymentSummary } from "@shipyard/shared";
+import type { DeploymentList, DeploymentStatus, DeploymentSummary } from "@shipyard/shared";
 import { DEPLOYMENT_STATUS_NAMES, formatDuration, isDeploymentActive } from "@shipyard/shared";
 import { api, errorMessage } from "../api.ts";
 import { Select } from "../components/Select.tsx";
 import { DeploymentStatusTag, Loading, Notice, PageHead } from "../components/ui.tsx";
+import { pollEvery, usePollStopped } from "../lib/poll.ts";
 import { formatDateTime } from "../lib/time.ts";
 
 const PAGE_SIZE = 20;
@@ -27,8 +28,9 @@ export function Deployments() {
   const days = RANGES.find(([k]) => k === range)?.[2] ?? null;
 
   const config = useQuery({ queryKey: ["config"], queryFn: api.config });
+  const listKey = ["deployments", { country, env, status, range, page }];
   const list = useQuery({
-    queryKey: ["deployments", { country, env, status, range, page }],
+    queryKey: listKey,
     queryFn: () =>
       api.list({
         page,
@@ -39,8 +41,9 @@ export function Deployments() {
         from: days ? Date.now() - days * 24 * 3600 * 1000 : undefined,
       }),
     placeholderData: keepPreviousData,
-    refetchInterval: (q) => (q.state.data?.items.some((d) => isDeploymentActive(d.status)) ? 3000 : 15000),
+    refetchInterval: pollEvery<DeploymentList>((q) => (q.state.data?.items.some((d) => isDeploymentActive(d.status)) ? 3000 : 15000)),
   });
+  const listStopped = usePollStopped(listKey);
 
   const set = (key: string, value: string) => {
     const next = new URLSearchParams(params);
@@ -90,10 +93,13 @@ export function Deployments() {
         )}
       </div>
 
-      {list.isLoading ? (
+      {list.isError ? (
+        <Notice tone="err">
+          读取发布记录失败：{errorMessage(list.error)}
+          {listStopped && "。连续多次失败，已停止自动刷新，刷新页面后重试"}
+        </Notice>
+      ) : !list.data ? (
         <Loading />
-      ) : list.isError ? (
-        <Notice tone="err">读取发布记录失败：{errorMessage(list.error)}</Notice>
       ) : list.data!.items.length === 0 ? (
         <div className="empty">
           没有符合条件的发布记录。<Link className="link" to="/">新建发布</Link>

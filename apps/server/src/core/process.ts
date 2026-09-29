@@ -137,6 +137,15 @@ export const spawnRunner: Runner = (file, args, opts = {}) =>
     };
 
     child.on("error", (err) => finish(() => reject(new Error(`无法执行 ${file}：${err.message}`))));
+    // The leader is done: descendants in its group must not outlive this stage.
+    // Do this on `exit`, not `close`: a background child can keep the pipes
+    // open forever, or close them and survive after close clears killTimer.
+    // If the leader ignores SIGTERM, onAbort still gives it the grace period.
+    child.on("exit", () => {
+      if (process.platform !== "win32" && child.pid) {
+        try { process.kill(-child.pid, "SIGKILL"); } catch { /* group already gone */ }
+      }
+    });
     child.on("close", (code) => {
       outLines.end();
       errLines.end();

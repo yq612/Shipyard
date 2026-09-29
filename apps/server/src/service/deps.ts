@@ -5,6 +5,7 @@ import { redactUrl } from "@shipyard/shared";
 import { runBuild, runInstall } from "../core/builder.ts";
 import { upload } from "../core/deployer.ts";
 import { buildCloneArgs, clone, headCommit } from "../core/git.ts";
+import { isTempPathActive } from "../core/temp.ts";
 import type { PipelineDeps, StageContext } from "../core/pipeline.ts";
 
 export const TMP_PREFIX = "shipyard-";
@@ -35,16 +36,18 @@ export function realPipelineDeps(): PipelineDeps {
   };
 }
 
-// Removes leftover clone dirs / tarballs from earlier runs. `olderThanMs`
-// protects directories that belong to jobs running right now.
+// Age limits orphan cleanup; the registry protects running jobs even when
+// their directory mtime has not changed during a long build or upload.
 export async function cleanTmp(olderThanMs = 0, base = tmpdir()): Promise<number> {
   let removed = 0;
   const cutoff = Date.now() - olderThanMs;
   for (const name of await readdir(base).catch(() => [] as string[])) {
     if (!name.startsWith(TMP_PREFIX)) continue;
     const path = join(base, name);
+    if (isTempPathActive(path)) continue;
     try {
       if (olderThanMs > 0 && (await stat(path)).mtimeMs > cutoff) continue;
+      if (isTempPathActive(path)) continue;
       await rm(path, { recursive: true, force: true });
       removed++;
     } catch {

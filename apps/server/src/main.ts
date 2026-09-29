@@ -18,7 +18,7 @@ const DAY_MS = 24 * 3600 * 1000;
 
 async function assertTools(): Promise<void> {
   const missing: string[] = [];
-  for (const tool of ["git", "tar", "bun"]) {
+  for (const tool of ["git", "tar", "bun", "node"]) {
     try {
       await spawnRunner(tool, ["--version"]);
     } catch {
@@ -26,6 +26,14 @@ async function assertTools(): Promise<void> {
     }
   }
   if (missing.length) console.warn(`[startup] 缺少命令：${missing.join(", ")}，发布会失败，请先安装`);
+  if (!missing.includes("node")) {
+    try {
+      const { stdout } = await spawnRunner("node", ["-p", "process.versions.bun ?? ''"]);
+      if (stdout.trim()) console.warn("[startup] node 实际指向 Bun；Nuxt 等构建工具需要真实 Node.js，请更新部署镜像");
+    } catch {
+      console.warn("[startup] 无法验证 Node.js 运行时，请检查 node 命令及部署镜像");
+    }
+  }
 }
 
 async function main(): Promise<void> {

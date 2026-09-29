@@ -16,7 +16,7 @@ data/             运行时数据（不进 git）：config.yaml、ssh/deploy.pem
 
 ## 开发
 
-依赖 [Bun](https://bun.sh) 1.3+、git、tar。
+依赖 [Bun](https://bun.sh) 1.3+、Node.js 22 LTS、git、tar。Shipyard 自身由 Bun 运行；Nuxt 等带 Node shebang 的构建工具通过真实 Node 执行，避免 Bun 的兼容性差异。
 
 ```bash
 bun install
@@ -31,6 +31,8 @@ bun test && bun run typecheck
 `docker compose` 起两个容器，都用 host 网络：`caddy` 占 80 / 443，自动申请、续签 Let's Encrypt 证书；`shipyard` 只监听 `127.0.0.1:8080`。
 
 服务器要求：Docker（带 compose 插件）、git；域名 A 记录指向它；80 / 443 对全网开放（证书验证从多地发起），8080 不开。
+
+运行镜像内同时包含 Bun 和 Node.js 22，宿主机不用安装它们。配置中的 `bun install` / `bun run build` 可以保留；不要给 Nuxt 2 等工具加 `--bun` 强制切换运行时。
 
 ### 不在 git 里、要手工放到服务器的文件
 
@@ -73,7 +75,7 @@ echo 'DEPLOY_SSH=root@<服务器>' > .env.local     # 一次性；要求能免�
 bun run deploy
 ```
 
-它在服务器上执行 `deploy/upgrade.sh`：`git pull` → 重建并等健康检查 → Caddyfile 有变化就 reload → 经 Caddy 验证 HTTPS → 清理旧镜像。脚本在服务器上独立运行，SSH 断开也会跑完，输出在 `data/upgrade.log`。
+它在服务器上执行 `deploy/upgrade.sh`：`git pull` → 重建并等健康检查 → Caddyfile 有变化就 reload → 经 Caddy 验证 HTTPS → 清理旧镜像。终端只显示关键步骤；脚本在服务器上独立运行，SSH 断开也会跑完，完整输出在 `data/upgrade.log`。
 
 执行中的发布会先跑完才切换（最多 11 分钟），期间 Caddy 让请求等后端最多 30 秒。
 
@@ -104,6 +106,14 @@ bun run deploy
 - **重启恢复**：未完成的任务标记为「已中断」，清理临时目录
 - **访问控制**：无登录。写操作要求白名单 IP + 同源 Origin / Host，不开 CORS
 - **日志**：`data/logs/<任务号>/<环境序号>.log`，仓库凭据脱敏为 `***`
+
+### 资源清理
+
+- 每次发布无论成功、失败或取消，结束前都会删除本次克隆目录（含 `node_modules`、构建产物）和本地上传压缩包；删除失败会重试并在任务日志中告警。启动时及每日定时清理残留，活动任务的目录和压缩包不会被定时清理误删。
+- 构建命令退出时结束同组的后台子进程；取消先发 SIGTERM，主进程仍未退出则 5 秒后发 SIGKILL。Compose 的 init 负责回收孤儿进程。主动脱离进程组的第三方守护程序不在此保证内。
+- 上传或远端替换失败时，尽力清理本次远端暂存包和独立解压目录。网络断开、权限不足时不能保证立即删除，会记明确告警；替换已发出但结果未知时保留现场，避免与仍在执行的替换冲突。`dist.prev` 按配置保留一份用于回滚。
+- 发布记录和日志按 `logRetentionDays` 保留（默认 30 天），每日清理过期已完成任务；Bun 下载缓存和 Docker 构建缓存有意复用，不在每次发布后删除，需定期关注磁盘占用。
+- 写日志或保存结果出错也会释放任务锁、控制器和订阅。数据库保存失败时暂停新发布并告警；历史记录可能不完整，应先核对目标机器的实际结果、修复存储后再重启，不能直接按旧记录重试。
 
 ## 上线检查
 

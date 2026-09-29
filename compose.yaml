@@ -13,6 +13,7 @@ services:
     build: .
     image: shipyard:latest
     restart: unless-stopped
+    init: true                          # 回收构建进程退出后遗留的僵尸子进程
     # 与宿主机共用网络，服务看到的客户端 IP 和不用 Docker 时一致，IP 白名单才有效。
     # 不要改成 ports: 端口映射：bridge 网络下宿主机和 Caddy 发来的请求都会变成网关地址（如 172.18.0.1）。
     # Docker Desktop（Mac）需要在设置里开启 host 网络；本地开发直接用 bun run dev。

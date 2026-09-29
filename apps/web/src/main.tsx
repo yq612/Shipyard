@@ -5,6 +5,7 @@ import { createBrowserRouter, RouterProvider } from "react-router";
 import { ApiError } from "./api.ts";
 import { Layout } from "./components/Layout.tsx";
 import { PageHead } from "./components/ui.tsx";
+import { pollStopped } from "./lib/poll.ts";
 import { DeploymentDetail } from "./pages/DeploymentDetail.tsx";
 import { Deployments } from "./pages/Deployments.tsx";
 import { NewDeployment } from "./pages/NewDeployment.tsx";
@@ -14,7 +15,9 @@ import "./styles/app.css";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: true,
+      // A query that keeps failing stops refetching on its own until the page is reloaded.
+      refetchOnWindowFocus: (query) => !pollStopped(query),
+      refetchOnReconnect: (query) => !pollStopped(query),
       // 4xx won't fix themselves; retry only network / 5xx errors.
       retry: (count, err) => count < 2 && !(err instanceof ApiError && err.status >= 400 && err.status < 500),
     },
