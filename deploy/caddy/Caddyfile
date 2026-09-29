@@ -1,0 +1,21 @@
+# Shipyard 前面的反向代理，由 compose.yaml 里的 caddy 服务加载（挂载整个 deploy/caddy 目录）。
+# 域名来自仓库根目录 .env 的 SHIPYARD_DOMAIN；证书自动申请、自动续签，存在 caddy-data 卷里。
+# 改了本文件：git pull 之后 docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile
+#
+# 配合 data/config.yaml：
+#   access.trustProxy: true
+#   access.proxyIps: [127.0.0.1, ::1]
+#   access.allowedOrigins: [https://<SHIPYARD_DOMAIN>]
+#   access.allowIps 里去掉 127.0.0.1 / ::1：请求都经 Caddy 进来，本机地址不代表任何操作者
+#
+# Caddy 的默认行为正好是服务端要的，不用额外配置：
+#   - X-Forwarded-For 覆盖为真实来源 IP，客户端自带的不透传（没有配 trusted_proxies）
+#   - Host 原样转发，allowedOrigins 的 Host 校验才对得上
+#   - SSE（text/event-stream）立即转发，不缓冲；所以这里不加 encode，免得压缩把事件攒住
+
+{$SHIPYARD_DOMAIN} {
+	reverse_proxy 127.0.0.1:8080 {
+		# 升级时 shipyard 容器重启的几秒空档里，请求先等后端起来，而不是直接 502
+		lb_try_duration 30s
+	}
+}

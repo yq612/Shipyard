@@ -15,7 +15,7 @@ access:
     # - 203.0.113.10        # 示例：办公室出口 IP
     # - 10.8.0.0/16         # 示例：VPN 网段
   protectReads: false       # true：查看类接口也要求在白名单内
-  # 服务前面有 nginx 等反向代理时设为 true，nginx 按 deploy/nginx.conf.example 转发 X-Forwarded-For。
+  # 服务前面有反向代理时设为 true（compose 部署时前面是 Caddy，见 deploy/caddy/Caddyfile）。
   # 经代理转发的请求不会被当成代理自己的地址（通常是白名单里的 127.0.0.1）：没开 trustProxy、
   # 或代理没带 X-Forwarded-For，来源 IP 都按「未知」处理，不能执行，服务日志会提示原因。
   trustProxy: false

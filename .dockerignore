@@ -6,3 +6,4 @@ data
 *.pem
 compose.yaml
 deploy
+.env

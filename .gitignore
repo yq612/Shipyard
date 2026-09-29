@@ -10,3 +10,6 @@ data/*
 
 # SSH 私钥 / 证书 —— 绝不入库
 *.pem
+
+# 服务器特有的 compose 变量（SHIPYARD_DOMAIN 等）
+.env
