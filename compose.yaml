@@ -1,6 +1,6 @@
-# 生产部署的唯一方式。在仓库根目录执行：
-#   首次：准备好 .env、data/config.yaml 和 data/ssh/deploy.pem，然后 docker compose up -d --build
-#   升级：deploy/upgrade.sh（git pull + 重建 + 按需重载 Caddy + 清理旧镜像）
+# 生产部署的唯一方式，步骤见 README「部署」。
+#   首次：准备好 .env、data/config.yaml、data/ssh/deploy.pem，在服务器上执行 deploy/upgrade.sh
+#   之后：本地 bun run deploy
 # 运行时数据全在 ./data（config.yaml、ssh/deploy.pem、shipyard.db、logs/），证书在 caddy-data 卷里，
 # 都不进 git 也不进镜像，重建容器不会动它们。
 # 这台服务器特有的值只写在 .env 和 data/ 里，不要改本文件，否则 git pull 会冲突。

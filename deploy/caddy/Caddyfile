@@ -1,6 +1,6 @@
 # Shipyard 前面的反向代理，由 compose.yaml 里的 caddy 服务加载（挂载整个 deploy/caddy 目录）。
 # 域名来自仓库根目录 .env 的 SHIPYARD_DOMAIN；证书自动申请、自动续签，存在 caddy-data 卷里。
-# 改了本文件：git pull 之后 docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile
+# 改了本文件：deploy/upgrade.sh 检测到变化会自动 reload
 #
 # 配合 data/config.yaml：
 #   access.trustProxy: true
