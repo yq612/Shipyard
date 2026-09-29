@@ -41,7 +41,7 @@ export function buildTarArgs(distPath: string, tarPath: string): string[] {
 }
 
 export function stagingDir(server: string, ts: string): string {
-  return `/tmp/ease-deploy-${server}-${ts}`;
+  return `/tmp/shipyard-${server}-${ts}`;
 }
 
 // Extract into `<remotePath>.tmp`, then swap it in with a single `mv`, so the
@@ -109,7 +109,7 @@ export async function upload(
   const { signal } = opts;
 
   const ts = stamp();
-  const localTar = join(tmpBase, `ease-deploy-${target.server}-${ts}.tar.gz`);
+  const localTar = join(tmpBase, `shipyard-${target.server}-${ts}.tar.gz`);
   const staging = stagingDir(target.server, ts);
   const remoteTarFile = `${staging}/dist.tar.gz`;
 

@@ -1,4 +1,4 @@
-# Ease-Deploy 配置示例。复制到 data/config.yaml（或用 CONFIG_PATH 指定路径）后按需修改。
+# Shipyard 配置示例。复制到 data/config.yaml（或用 CONFIG_PATH 指定路径）后按需修改。
 # 服务运行时会热加载：每次发起发布前重新读取并校验，改环境、改白名单都不用重启。
 
 server:

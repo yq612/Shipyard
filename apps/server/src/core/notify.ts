@@ -5,7 +5,7 @@ import type { Stage, TaskStatus } from "@shipyard/shared";
 
 // Feishu (Lark) custom-bot notification. After a deployment finishes we POST an
 // interactive card to the bot's webhook. The card title carries the literal
-// "Ease-Deploy" so a bot configured with the 自定义关键词 "Ease-Deploy" accepts
+// "Shipyard" so a bot configured with the 自定义关键词 "Shipyard" accepts
 // it without signature verification.
 
 export interface FeishuCard {
@@ -59,7 +59,7 @@ const ENV_ICONS: Record<TaskStatus, string> = {
 export function buildFeishuCard(input: CardInput): FeishuCard {
   const ok = input.envs.filter((e) => e.status === "done").length;
   const total = input.envs.length;
-  const title = `Ease-Deploy #${input.deploymentId} · ${input.countryName} · ${DEPLOYMENT_STATUS_NAMES[input.status]}`;
+  const title = `Shipyard #${input.deploymentId} · ${input.countryName} · ${DEPLOYMENT_STATUS_NAMES[input.status]}`;
   const operator = input.operatorName ? `${input.operatorName}（${input.operatorIp}）` : input.operatorIp;
 
   const lines: string[] = [

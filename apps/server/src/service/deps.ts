@@ -7,7 +7,7 @@ import { upload } from "../core/deployer.ts";
 import { buildCloneArgs, clone, headCommit } from "../core/git.ts";
 import type { PipelineDeps, StageContext } from "../core/pipeline.ts";
 
-export const TMP_PREFIX = "ease-deploy-";
+export const TMP_PREFIX = "shipyard-";
 
 const forward = (ctx: StageContext) => (stream: "stdout" | "stderr", line: string) => ctx.log(stream, redactUrl(line));
 

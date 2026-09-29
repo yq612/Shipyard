@@ -1,4 +1,4 @@
-# Ease-Deploy（Web 版）
+# Shipyard
 
 在浏览器里完成「选国家 → 选环境 → 确认执行计划 → 执行 → 完成」的构建与发布。旧版 CLI（Ease-Deploy 终端工具）的流水线原样复用，改为由服务端统一执行：过程能实时看（进度 + 日志），事后能追溯（发布记录、当时的执行参数、发布的提交号）。
 
@@ -14,7 +14,7 @@ apps/server       Bun + Hono：REST + SSE、调度器、环境锁、SQLite、日
   src/store         SQLite（bun:sqlite）与日志文件
   src/http          路由、IP 白名单、Origin / Host 校验、SSE
 apps/web          Vite + React + TanStack Query，托管在 server 上，同源访问
-data/             运行时数据（不进 git）：config.yaml、ssh/deploy.pem、ease-deploy.db、logs/
+data/             运行时数据（不进 git）：config.yaml、ssh/deploy.pem、shipyard.db、logs/
 ```
 
 ## 本地开发

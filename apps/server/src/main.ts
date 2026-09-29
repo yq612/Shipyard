@@ -46,7 +46,7 @@ async function main(): Promise<void> {
   }
   await assertTools();
 
-  const repo = new Repository(openDatabase(join(DATA_DIR, "ease-deploy.db")));
+  const repo = new Repository(openDatabase(join(DATA_DIR, "shipyard.db")));
   const logs = new LogStore(join(DATA_DIR, "logs"));
   const service = new DeploymentService({ repo, logs, config, pipeline: realPipelineDeps() });
 
@@ -78,7 +78,7 @@ async function main(): Promise<void> {
     idleTimeout: 30,
     fetch: app.fetch,
   });
-  console.log(`[startup] Ease-Deploy 已启动：http://localhost:${server.port}（配置 ${CONFIG_PATH}，数据 ${DATA_DIR}）`);
+  console.log(`[startup] Shipyard 已启动：http://localhost:${server.port}（配置 ${CONFIG_PATH}，数据 ${DATA_DIR}）`);
   if (!existsSync(join(WEB_DIST, "index.html"))) {
     console.log("[startup] 前端未构建，只提供 API；开发时请用 `bun run dev`");
   }

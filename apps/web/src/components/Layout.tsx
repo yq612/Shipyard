@@ -20,8 +20,8 @@ function Topbar() {
 
   return (
     <nav className="nav topbar" aria-label="主导航">
-      <NavLink to="/" className="nav__brand" aria-label="Ease-Deploy 首页">
-        <span className="topbar__prompt" aria-hidden="true">&gt;_</span>Ease-Deploy
+      <NavLink to="/" className="nav__brand" aria-label="Shipyard 首页">
+        <span className="topbar__prompt" aria-hidden="true">&gt;_</span>Shipyard
       </NavLink>
       <NavLink to="/" end className={({ isActive }) => `nav__link${isActive ? " is-current" : ""}`}>
         新建发布
@@ -60,7 +60,7 @@ export function Layout() {
         <Outlet />
       </main>
       <footer className="foot">
-        <span>Ease-Deploy · 构建与发布</span>
+        <span>Shipyard · 构建与发布</span>
         <span>基于磷光设计体系 v1.2</span>
       </footer>
     </div>

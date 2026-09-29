@@ -326,7 +326,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
     mountSpa(app, deps.webDist);
   } else {
     app.get("/", (c) =>
-      c.text("Ease-Deploy API 已启动。前端未构建：开发时运行 `bun run dev`，部署前运行 `bun run build`。\n"),
+      c.text("Shipyard API 已启动。前端未构建：开发时运行 `bun run dev`，部署前运行 `bun run build`。\n"),
     );
   }
 

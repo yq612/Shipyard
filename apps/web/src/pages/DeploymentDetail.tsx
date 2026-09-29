@@ -113,9 +113,9 @@ function useTabTitle(detail: Detail | null, active: boolean) {
     const c = taskCounts(detail.state);
     const settled = c.total - c.queued - c.running;
     const prefix = active ? `${frame} ${settled}/${c.total}` : detail.deployment.status === "succeeded" ? "✔" : "✗";
-    document.title = `${prefix} #${detail.deployment.id} · Ease-Deploy`;
+    document.title = `${prefix} #${detail.deployment.id} · Shipyard`;
   }, [detail, active, frame]);
-  useEffect(() => () => void (document.title = "Ease-Deploy"), []);
+  useEffect(() => () => void (document.title = "Shipyard"), []);
 }
 
 // ------------------------------------------------------------ ④ 执行中

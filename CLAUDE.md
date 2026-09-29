@@ -1,4 +1,4 @@
-# Ease-Deploy（Web 版）
+# Shipyard
 
 Bun workspaces 单仓：`packages/shared`（前后端共用）、`apps/server`（Bun + Hono + bun:sqlite）、`apps/web`（Vite + React）。背景与设计决策见 `docs/web-migration-research.md`。
 

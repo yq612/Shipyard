@@ -74,7 +74,7 @@ describe("deployer", () => {
   });
 
   test("stagingDir composes a unique /tmp path", () => {
-    expect(stagingDir("quickbuypk", "1720000000000")).toBe("/tmp/ease-deploy-quickbuypk-1720000000000");
+    expect(stagingDir("quickbuypk", "1720000000000")).toBe("/tmp/shipyard-quickbuypk-1720000000000");
   });
 
   test("buildRemoteScript performs an atomic extract-and-swap", () => {
@@ -128,8 +128,8 @@ describe("deployer", () => {
       fileSize: async () => 12.3 * 1024 * 1024,
     });
 
-    const local = "/localtmp/ease-deploy-srv-123.tar.gz";
-    const staging = "/tmp/ease-deploy-srv-123";
+    const local = "/localtmp/shipyard-srv-123.tar.gz";
+    const staging = "/tmp/shipyard-srv-123";
     expect(runCalls[0]).toEqual({ file: "tar", args: buildTarArgs("/tmp/repo/dist", local) });
     expect(connected).toEqual({ host: "1.2.3.4", username: "root", port: 22, privateKey: "PEM" });
     expect(events).toEqual([
@@ -364,7 +364,7 @@ describe("notify", () => {
   test("success card: green header, keyword, id, operator, commit, detail link", () => {
     const card = buildFeishuCard(input({ detailUrl: "https://deploy/deployments/42" }));
     expect(card.card.header.template).toBe("green");
-    expect(card.card.header.title.content).toContain("Ease-Deploy"); // 关键词，配合自定义关键词安全设置
+    expect(card.card.header.title.content).toContain("Shipyard"); // 关键词，配合自定义关键词安全设置
     expect(card.card.header.title.content).toContain("#42");
     expect(card.card.header.title.content).toContain("印尼");
     const text = content(card);
