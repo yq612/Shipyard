@@ -14,3 +14,5 @@ process.on("SIGTERM", stop);
 const code = await Promise.race(procs.map((p) => p.exited));
 stop();
 process.exit(code);
+
+export {};
