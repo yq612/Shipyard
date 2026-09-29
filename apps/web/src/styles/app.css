@@ -5,6 +5,30 @@
    - 像素字只用 12 的倍数，间距用 6 的倍数，不用圆角和投影
    ========================================================= */
 
+/* ---------- 暗色主题提高对比 ----------
+   原本的注释色 #7A8270 在面板上只有 4.3:1，12px 像素字很难认；扫描线和暗角又压暗了一层。
+   这里把三级文字和线条整体提亮（墨色 18:1，次要 11.9:1，注释 7.7:1），扫描线和暗角减弱。 */
+[data-theme="dark"] {
+  --c-ink: #F2F7EA;
+  --c-ink-2: #C4CCB7;
+  --c-ink-3: #9DA592;
+  --c-line: #343A2D;
+  --c-line-strong: #5A6250;
+  --scan-screen: repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0, 0, 0, .08) 2px 3px);
+  --vignette: radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, .22) 100%);
+}
+
+/* ---------- 亮色主题提亮 ----------
+   设计体系原本的液晶底色 #D2D7C3 偏暗，这里只把底色和线条整体提亮，
+   保持同一个暖灰绿色相；文字色不动，对比度反而更高（墨色 13.3:1，注释 5.8:1）。 */
+[data-theme="light"] {
+  --c-screen: #E9ECDF;
+  --c-panel: #F2F4EA;
+  --c-raised: #F8F9F3;
+  --c-line: #C5CBB5;
+  --c-line-strong: #949C84;
+}
+
 .page { max-width: 1320px; margin: 0 auto; padding: var(--s-3) var(--s-4) var(--s-7); }
 .page__main { margin-top: var(--s-4); }
 
@@ -12,6 +36,16 @@
 .topbar { position: sticky; top: 0; z-index: 20; }
 .topbar .nav__brand { display: inline-flex; align-items: center; gap: var(--s-1); }
 .topbar__prompt { color: var(--c-accent-ink); }
+/* 品牌后的窄光标：照开机动画的显像管，熄灭时先压成一条亮线再余辉褪掉，亮起时从亮线撑开 */
+.topbar__cursor { width: 3px; height: 18px; background: var(--c-accent-ink); box-shadow: var(--glow-accent); animation: topbar-cursor 1.8s infinite; }
+@keyframes topbar-cursor {
+  0%, 50% { opacity: 1; transform: none; animation-timing-function: cubic-bezier(.6, 0, .9, .4); }
+  60% { opacity: 1; transform: scaleY(.06); animation-timing-function: cubic-bezier(.1, .6, .3, 1); }
+  76%, 88% { opacity: 0; transform: scaleY(.06); animation-timing-function: ease-out; }
+  92% { opacity: 1; transform: scaleY(.06); animation-timing-function: cubic-bezier(.2, .8, .2, 1); }
+  100% { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) { .topbar__cursor { animation: none; } }
 .topbar__right { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
 .topbar__stat { font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); white-space: nowrap; }
 .topbar__stat b { font-weight: 400; color: var(--c-ink); }
@@ -21,7 +55,8 @@
 /* ---------- 页面标题 ---------- */
 .head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s-2) var(--s-4); }
 .head__title { margin: 0; font-size: var(--t-36); line-height: 48px; }
-.head__prompt { color: var(--c-accent-ink); }
+/* 标题前的 # 章节标记，和顶栏 >_ 提示符区分开 */
+.head__mark { color: var(--c-accent-ink); }
 .head__meta { margin: var(--s-1) 0 0; font-size: var(--t-14); line-height: 24px; color: var(--c-ink-2); }
 .head__actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
 
@@ -54,6 +89,8 @@ button.step:hover .step__no { color: inherit; }
 .mono { font-family: var(--f-body); }
 .pixel { font: 400 var(--t-12)/18px var(--f-pixel); }
 .nowrap { white-space: nowrap; }
+/* 对勾：像素字里的 ✔ 太小，改用 assets/check.svg 当蒙版，颜色跟随文字 */
+.ico-check, .task__stage.is-done::before { display: inline-block; width: 12px; height: 12px; vertical-align: middle; background-color: currentColor; mask: url("../assets/check.svg") center / contain no-repeat; }
 .ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
 .grow { flex: 1; min-width: 0; }
@@ -65,6 +102,23 @@ button.step:hover .step__no { color: inherit; }
 .btn--danger { color: var(--c-red); border-color: var(--c-red); }
 .btn--danger:hover { background: var(--c-red); color: var(--c-screen); }
 .btn[aria-busy="true"] { cursor: progress; }
+/* 悬停找信号：反显之外，按钮里的扫描线慢慢往下爬，像老电视还没锁住信号。
+   线条取 currentColor，反显后文字是什么色线条就是什么色，各种按钮共用这一条。
+   1px 线 3px 一格，和 --scan-panel 同规格；上面多留 3px，往下挪一格正好接上，看不出循环。
+   动画一直挂着、平时暂停，移开时线条原地淡出，不会弹回去 */
+.btn { position: relative; isolation: isolate; overflow: hidden; }
+.btn::before {
+  content: ""; position: absolute; inset: -3px 0 0; z-index: -1; pointer-events: none;
+  background: repeating-linear-gradient(to bottom, color-mix(in srgb, currentColor 16%, transparent) 0 1px, transparent 1px 3px);
+  opacity: 0; transition: opacity var(--dur-hover) ease-out;
+  animation: btn-scan .8s linear infinite paused;
+}
+.btn:hover:not(:disabled)::before { opacity: 1; animation-play-state: running; }
+@keyframes btn-scan { to { transform: translateY(3px); } }
+/* 亮色是液晶屏：不平滑滚动，1px 一档往下跳 */
+[data-theme="light"] .btn::before { animation-timing-function: steps(3, end); }
+/* 系统开了减少动态效果：线条照样出现，但不动 */
+@media (prefers-reduced-motion: reduce) { .btn::before { animation: none; } }
 
 .tag--ok { color: var(--c-phosphor); border-color: var(--c-phosphor); }
 .tag--warn { color: var(--c-amber); border-color: var(--c-amber); }
@@ -160,24 +214,15 @@ button.step:hover .step__no { color: inherit; }
 .plan-step__note { margin: 0; font-size: var(--t-12); line-height: 18px; color: var(--c-ink-3); }
 .confirm { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 360px); gap: var(--s-4); align-items: end; margin-top: var(--s-4); }
 
-/* ---------- ④ 执行中：阶段汇总 + 环境列表 ---------- */
-.board { display: grid; grid-template-columns: 264px minmax(0, 1fr); gap: var(--s-2); align-items: start; }
-.phases { display: grid; }
-.phase { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: var(--s-2); padding: var(--s-2) var(--s-3); font-size: var(--t-14); line-height: 24px; }
-.phase + .phase { border-top: var(--bw) solid var(--c-line); }
-.phase__icon { font: 400 var(--t-12)/24px var(--f-pixel); text-align: center; color: var(--c-ink-3); }
-.phase__count { font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); font-variant-numeric: tabular-nums; }
-.phase__bar { grid-column: 2 / -1; display: flex; height: 6px; border: var(--bw) solid var(--c-line); }
-.phase__bar span { height: 100%; }
-.phase__bar .is-done { background: var(--c-accent); }
-.phase__bar .is-running { background: var(--c-accent-wash); background-image: var(--scan-panel); }
-.phase__bar .is-error { background: var(--c-red); }
-.phase.is-active .phase__icon, .phase.is-active .phase__name { color: var(--c-accent-ink); }
-.phase.is-done .phase__icon { color: var(--c-phosphor); }
-.phase.is-error .phase__icon { color: var(--c-red); }
-
+/* ---------- ④ 执行中：环境列表，行底色的宽度就是进度 ---------- */
 .tasks { display: grid; }
-.task { display: grid; grid-template-columns: 24px minmax(120px, 1.1fr) minmax(0, 3fr) 72px auto; align-items: center; gap: var(--s-2); width: 100%; padding: var(--s-2) var(--s-3); text-align: left; font: inherit; font-size: var(--t-14); line-height: 24px; color: var(--c-ink); background: transparent; border: 0; border-left: var(--bw-strong) solid transparent; cursor: pointer; transition: var(--tr-hover); }
+.task { position: relative; isolation: isolate; display: grid; grid-template-columns: 24px minmax(120px, 1.1fr) minmax(0, 3fr) 72px auto; align-items: center; gap: var(--s-2); width: 100%; padding: var(--s-2) var(--s-3); text-align: left; font: inherit; font-size: var(--t-14); line-height: 24px; color: var(--c-ink); background: transparent; border: 0; border-left: var(--bw-strong) solid transparent; cursor: pointer; transition: var(--tr-hover); }
+/* 进度底色：垫在行内容下面；执行中的右沿画一条亮线当进度头 */
+.task__fill { position: absolute; inset: 0 auto 0 0; z-index: -1; background: color-mix(in srgb, var(--c-accent) 14%, transparent); transition: width .6s ease-out; }
+.task__fill.is-running { border-right: var(--bw) solid var(--c-accent-ink); }
+.task__fill.is-error, .task__fill.is-interrupted { background: color-mix(in srgb, var(--c-red) 14%, transparent); }
+.task__fill.is-cancelled { background: color-mix(in srgb, var(--c-ink-3) 14%, transparent); }
+@media (prefers-reduced-motion: reduce) { .task__fill { transition: none; } }
 .task + .task { border-top: var(--bw) solid var(--c-line); }
 .task:hover { background: var(--c-accent-wash); }
 .task.is-selected { background: var(--scan-panel), var(--c-accent-wash); border-left-color: var(--c-accent-ink); }
@@ -186,7 +231,7 @@ button.step:hover .step__no { color: inherit; }
 .task__stages { display: flex; flex-wrap: wrap; gap: 0 var(--s-2); min-width: 0; font-size: var(--t-12); line-height: 24px; color: var(--c-ink-3); }
 .task__stage { white-space: nowrap; }
 .task__stage.is-done { color: var(--c-ink-2); }
-.task__stage.is-done::before { content: "✔"; margin-right: 3px; color: var(--c-phosphor); }
+.task__stage.is-done::before { content: ""; margin-right: 3px; background-color: var(--c-phosphor); }
 .task__stage.is-running { color: var(--c-accent-ink); }
 .task__stage.is-error { color: var(--c-red); }
 .task__stage.is-error::before { content: "✗"; margin-right: 3px; }
@@ -200,6 +245,19 @@ button.step:hover .step__no { color: inherit; }
 .log .term__bar { flex-wrap: wrap; }
 .log__title { display: flex; align-items: center; gap: var(--s-2); min-width: 0; }
 .log__tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-1); }
+.log__tools .seg { margin-right: var(--s-1); white-space: nowrap; }
+/* 工具按钮和阶段筛选同高同框：6px 上下留白 + 18px 行高 */
+.log__tool { display: inline-flex; align-items: center; gap: var(--s-1); white-space: nowrap; padding: var(--s-1) var(--s-2); font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-2); text-decoration: none; background: var(--c-screen); border: var(--bw) solid var(--c-line-strong); cursor: pointer; transition: var(--tr-hover); }
+.log__tool:hover { background: var(--c-ink); color: var(--c-screen); border-color: var(--c-ink); }
+.log__tool[aria-pressed="true"] { color: var(--c-ink); }
+.log__tool[aria-pressed="true"]:hover { color: var(--c-screen); }
+/* 开关指示灯：跟环境表的复选框同一种画法，空框 = 关，框里一块实心方块 = 开 */
+.log__led { display: inline-grid; place-items: center; flex: none; width: 12px; height: 12px; border: var(--bw) solid currentColor; }
+.log__tool[aria-pressed="true"] .log__led { border-color: var(--c-accent-ink); }
+.log__tool[aria-pressed="true"] .log__led::after { content: ""; width: 6px; height: 6px; background: var(--c-accent-ink); }
+.log__tool:hover .log__led { border-color: currentColor; }
+.log__tool:hover .log__led::after { background: currentColor; }
+@media (prefers-reduced-motion: reduce) { .log__tool { transition: none; } }
 .log__viewport { height: 432px; background: var(--scan-panel); }
 .log__line { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: var(--s-2); padding: 0 var(--s-3); font: 400 13px/21px var(--f-body); color: var(--c-ink-2); }
 .log__ts { color: var(--c-ink-3); user-select: none; font-variant-numeric: tabular-nums; }
@@ -248,9 +306,6 @@ button.step:hover .step__no { color: inherit; }
 
 /* ---------- 窄屏 ---------- */
 @media (max-width: 1080px) {
-  .board { grid-template-columns: 1fr; }
-  .phases { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .phase + .phase { border-top: 0; border-left: var(--bw) solid var(--c-line); }
   .confirm { grid-template-columns: 1fr; }
 }
 @media (max-width: 760px) {
@@ -259,7 +314,6 @@ button.step:hover .step__no { color: inherit; }
   .topbar__right { margin-left: 0; }
   .steps { grid-template-columns: 1fr; }
   .step + .step { border-left: 0; border-top: var(--bw) solid var(--c-line); }
-  .phases { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .task { grid-template-columns: 24px minmax(0, 1fr) auto; }
   .task__stages { grid-column: 2 / -1; grid-row: 2; }
   .task__act { grid-column: 3; grid-row: 1; }

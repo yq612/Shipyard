@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router";
-import type { DeploymentDetail as Detail, DeploymentEnvView, ProgressState, ProgressTask, Stage } from "@shipyard/shared";
+import type { DeploymentDetail as Detail, DeploymentEnvView, ProgressTask, Stage } from "@shipyard/shared";
 import {
   DEPLOYMENT_STATUS_NAMES,
   STAGES,
@@ -10,7 +10,6 @@ import {
   isDeploymentActive,
   sanitizeText,
   shortSha,
-  stageTotals,
   taskCounts,
   taskElapsed,
 } from "@shipyard/shared";
@@ -68,7 +67,7 @@ export function DeploymentDetail() {
   return (
     <>
       <PageHead
-        title={<>任务 #{d.id} · {d.countryName}</>}
+        title={<>任务 {d.id} · {d.countryName}</>}
         meta={
           <>
             {d.envCount} 个环境 · 发起人 {d.operatorName ?? "未填写"}（{d.operatorIp}）· {formatDateTime(d.createdAt)} ·{" "}
@@ -88,10 +87,7 @@ export function DeploymentDetail() {
 
       {active ? <RunningActions detail={detail} /> : <ResultPanel detail={detail} onViewLog={setSelected} />}
 
-      <div className="board" style={{ marginTop: "var(--s-3)" }}>
-        <PhasePanel state={detail.state} />
-        <TaskPanel detail={detail} now={now} selected={selected} onSelect={setSelected} active={active} />
-      </div>
+      <TaskPanel detail={detail} now={now} selected={selected} onSelect={setSelected} active={active} />
 
       {sel && selTask && (
         <LogViewer
@@ -146,37 +142,17 @@ function RunningActions({ detail }: { detail: Detail }) {
   );
 }
 
-function PhasePanel({ state }: { state: ProgressState }) {
-  const frame = useSpinner(state.tasks.some((t) => t.status === "running"));
-  return (
-    <section className="panel">
-      <div className="panel__bar"><span>阶段汇总</span></div>
-      <div className="phases">
-        {STAGES.map((stage, i) => {
-          const t = stageTotals(state, stage);
-          const settled = t.done + t.error + t.skipped + t.cancelled;
-          const tone = t.running > 0 ? "is-active" : t.error > 0 && settled === t.total ? "is-error" : t.total > 0 && t.done === t.total ? "is-done" : "";
-          const icon = t.running > 0 ? frame : tone === "is-error" ? "!" : tone === "is-done" ? "✔" : String(i + 1);
-          const pct = (n: number) => `${t.total ? (n / t.total) * 100 : 0}%`;
-          return (
-            <div key={stage} className={`phase ${tone}`}>
-              <span className="phase__icon" aria-hidden="true">{icon}</span>
-              <span className="phase__name">{STAGE_NAMES[stage]}</span>
-              <span className="phase__count">
-                {t.done}/{t.total}
-                {t.error > 0 && <span className="err"> · {t.error} 失败</span>}
-              </span>
-              <div className="phase__bar" aria-hidden="true">
-                <span className="is-done" style={{ width: pct(t.done) }} />
-                <span className="is-running" style={{ width: pct(t.running) }} />
-                <span className="is-error" style={{ width: pct(t.error) }} />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
+// How far the env got, 0–1, for the row's background fill: the running stage
+// counts as half, a failed or cancelled stage as reached.
+function taskProgress(task: ProgressTask): number {
+  if (task.status === "done") return 1;
+  let reached = 0;
+  for (const stage of STAGES) {
+    const st = task.stages[stage];
+    if (st === "running") reached += 0.5;
+    else if (st === "done" || st === "error" || st === "cancelled") reached += 1;
+  }
+  return reached / STAGES.length;
 }
 
 function StageChips({ task }: { task: ProgressTask }) {
@@ -223,7 +199,7 @@ function TaskPanel({
   const { allowed } = useCanExecute();
   const cancelEnv = useMutation({ mutationFn: (idx: number) => api.cancel(detail.deployment.id, idx) });
   return (
-    <section className="panel">
+    <section className="panel" style={{ marginTop: "var(--s-3)" }}>
       <div className="panel__bar">
         <span>环境 · 点击查看日志</span>
         {cancelEnv.isError && <span className="err">{errorMessage(cancelEnv.error)}</span>}
@@ -248,6 +224,7 @@ function TaskPanel({
                 }
               }}
             >
+              <span className={`task__fill is-${task.status}`} style={{ width: `${taskProgress(task) * 100}%` }} aria-hidden="true" />
               <TaskIcon status={task.status} />
               <span className="task__name" title={`${env.branch} → ${env.host}:${env.remotePath}`}>{env.envName}</span>
               <StageChips task={task} />

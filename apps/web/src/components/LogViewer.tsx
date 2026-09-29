@@ -92,16 +92,16 @@ export function LogViewer({
           </div>
           <button
             type="button"
-            className="term__copy"
+            className="log__tool"
             aria-pressed={follow}
             onClick={() => {
               if (!follow) ref.current?.scrollToIndex({ index: "LAST", behavior: "auto" });
               setFollow(!follow);
             }}
           >
-            自动滚动 {follow ? "✔" : "✗"}
+            <span className="log__led" aria-hidden="true" />自动滚动
           </button>
-          <a className="term__copy" href={api.downloadLogUrl(deploymentId, envIdx)} download>
+          <a className="log__tool" href={api.downloadLogUrl(deploymentId, envIdx)} download>
             下载日志
           </a>
         </div>

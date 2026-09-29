@@ -8,13 +8,19 @@ export function PageHead({ title, meta, actions }: { title: ReactNode; meta?: Re
     <header className="head">
       <div className="grow">
         <h1 className="head__title ty-display">
-          <span className="head__prompt" aria-hidden="true">&gt;</span> {title}
+          <span className="head__mark" aria-hidden="true">#</span> {title}
         </h1>
         {meta && <p className="head__meta">{meta}</p>}
       </div>
       {actions && <div className="head__actions">{actions}</div>}
     </header>
   );
+}
+
+// Pixel check mark (assets/check.svg as a mask, so it takes the text colour);
+// the ✔ glyph renders too small in the pixel font.
+export function CheckIcon() {
+  return <span className="ico-check" aria-hidden="true" />;
 }
 
 export type StepState = "todo" | "current" | "done" | "error";
@@ -28,7 +34,7 @@ export function Steps({ states, onStep }: { states: StepState[]; onStep?: (index
       {WIZARD_STEPS.map((name, i) => {
         const state = states[i] ?? "todo";
         const cls = `step${state === "done" ? " is-done" : state === "current" ? " is-current" : state === "error" ? " is-error" : ""}`;
-        const mark = state === "done" ? "✔" : state === "error" ? "!" : String(i + 1);
+        const mark = state === "done" ? <CheckIcon /> : state === "error" ? "!" : String(i + 1);
         const body = (
           <>
             <span className="step__no" aria-hidden="true">{mark}</span>
@@ -83,7 +89,7 @@ export function TaskIcon({ status }: { status: TaskStatus }) {
     case "running":
       return <span className="task__icon spin" aria-label="执行中">{frame}</span>;
     case "done":
-      return <span className="task__icon ok" aria-label="成功">✔</span>;
+      return <span className="task__icon ok" aria-label="成功"><CheckIcon /></span>;
     case "error":
       return <span className="task__icon err" aria-label="失败">✗</span>;
     case "cancelled":
@@ -103,7 +109,7 @@ export function NotifyText({ status, error }: { status: NotifyStatus | null; err
 }
 
 export function Notice({ tone = "info", children }: { tone?: "info" | "warn" | "err" | "ok"; children: ReactNode }) {
-  const icon = tone === "err" ? "✗" : tone === "warn" ? "!" : tone === "ok" ? "✔" : ">";
+  const icon = tone === "err" ? "✗" : tone === "warn" ? "!" : tone === "ok" ? <CheckIcon /> : ">";
   return (
     <div className={`notice notice--${tone}`} role={tone === "err" ? "alert" : "status"}>
       <span className="notice__icon" aria-hidden="true">{icon}</span>

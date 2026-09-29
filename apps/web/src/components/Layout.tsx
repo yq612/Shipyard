@@ -22,6 +22,7 @@ function Topbar() {
     <nav className="nav topbar" aria-label="主导航">
       <NavLink to="/" className="nav__brand" aria-label="Shipyard 首页">
         <span className="topbar__prompt" aria-hidden="true">&gt;_</span>Shipyard
+        <span className="topbar__cursor" aria-hidden="true" />
       </NavLink>
       <NavLink to="/" end className={({ isActive }) => `nav__link${isActive ? " is-current" : ""}`}>
         新建发布
@@ -61,7 +62,6 @@ export function Layout() {
       </main>
       <footer className="foot">
         <span>Shipyard · 构建与发布</span>
-        <span>基于磷光设计体系 v1.2</span>
       </footer>
     </div>
   );

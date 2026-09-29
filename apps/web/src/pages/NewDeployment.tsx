@@ -5,7 +5,7 @@ import type { ConfigView, CountryView, EnvBusyDetail, EnvView, PlanResponse } fr
 import { STAGE_NAMES, TASK_STATUS_NAMES, shortSha } from "@shipyard/shared";
 import { ApiError, api, errorMessage } from "../api.ts";
 import { useCanExecute } from "../components/Layout.tsx";
-import { Loading, Notice, PageHead, Steps, type StepState } from "../components/ui.tsx";
+import { CheckIcon, Loading, Notice, PageHead, Steps, type StepState } from "../components/ui.tsx";
 import { useOperatorName } from "../lib/operator.ts";
 import { formatDateTime } from "../lib/time.ts";
 
@@ -138,7 +138,7 @@ function LastDeploy({ env }: { env: EnvView }) {
   const when = formatDateTime(last.finishedAt ?? last.startedAt);
   const href = `/deployments/${last.deploymentId}`;
   if (last.status === "done") {
-    return <a className="link" href={href} onClick={(e) => e.stopPropagation()}>{when} <span className="ok">✔</span> {shortSha(last.commitSha)}</a>;
+    return <a className="link" href={href} onClick={(e) => e.stopPropagation()}>{when} <span className="ok"><CheckIcon /></span> {shortSha(last.commitSha)}</a>;
   }
   if (last.status === "error" || last.status === "interrupted") {
     return (
