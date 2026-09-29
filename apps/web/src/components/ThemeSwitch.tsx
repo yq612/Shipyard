@@ -18,7 +18,7 @@ const OPTIONS: [Pref, string][] = [
 // syncs aria-pressed for buttons present at page load — React renders later,
 // so the pressed state is tracked here from the script's change event.
 export function ThemeSwitch() {
-  const [pref, setPref] = useState<Pref>(() => window.phosphorTheme?.get() ?? "auto");
+  const [pref, setPref] = useState<Pref>(() => window.phosphorTheme?.get() ?? "dark");
   useEffect(() => {
     const onChange = (e: Event) => setPref((e as CustomEvent<{ pref: Pref }>).detail.pref);
     document.addEventListener("phosphor:themechange", onChange);

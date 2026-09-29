@@ -8,18 +8,20 @@
    脚本会自动绑定点击，并同步更新 aria-pressed。
 
    选择会存进 localStorage（键名 phosphor-theme）；选 auto 就是跟随系统。
+   没选过时用 DEFAULT（Shipyard 默认暗色）。
    每次换主题，document 上会发出 phosphor:themechange 事件。
    ========================================================= */
 (function () {
   var KEY = 'phosphor-theme';
+  var DEFAULT = 'dark';
   var root = document.documentElement;
   var media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: light)') : null;
 
   function read() {
     try {
       var v = localStorage.getItem(KEY);
-      return v === 'dark' || v === 'light' ? v : 'auto';
-    } catch (e) { return 'auto'; }
+      return v === 'auto' || v === 'dark' || v === 'light' ? v : DEFAULT;
+    } catch (e) { return DEFAULT; }
   }
 
   var current = read();
@@ -61,7 +63,7 @@
   function set(pref) {
     current = pref === 'dark' || pref === 'light' ? pref : 'auto';
     try {
-      if (current === 'auto') localStorage.removeItem(KEY);
+      if (current === DEFAULT) localStorage.removeItem(KEY);
       else localStorage.setItem(KEY, current);
     } catch (e) {}
     apply();
