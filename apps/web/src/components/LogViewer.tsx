@@ -1,8 +1,8 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 import { AnsiUp } from "ansi_up";
-import type { LogLine, Stage } from "@shipyard/shared";
-import { STAGES, STAGE_NAMES } from "@shipyard/shared";
+import type { LogLine, Stage } from "@ease-deploy/shared";
+import { STAGES, STAGE_NAMES } from "@ease-deploy/shared";
 import { api } from "../api.ts";
 import { useLogStream } from "../lib/sse.ts";
 import { formatTime } from "../lib/time.ts";

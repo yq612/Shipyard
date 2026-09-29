@@ -1,7 +1,7 @@
 import { createHmac } from "node:crypto";
-import type { DeploymentStatus } from "@shipyard/shared";
-import { DEPLOYMENT_STATUS_NAMES, STAGE_NAMES, formatDuration, sanitizeText, shortSha } from "@shipyard/shared";
-import type { Stage, TaskStatus } from "@shipyard/shared";
+import type { DeploymentStatus } from "@ease-deploy/shared";
+import { DEPLOYMENT_STATUS_NAMES, STAGE_NAMES, formatDuration, sanitizeText, shortSha } from "@ease-deploy/shared";
+import type { Stage, TaskStatus } from "@ease-deploy/shared";
 
 // Feishu (Lark) custom-bot notification. After a deployment finishes we POST an
 // interactive card to the bot's webhook. The card title carries the literal

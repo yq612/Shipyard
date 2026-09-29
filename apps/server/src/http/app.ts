@@ -12,7 +12,7 @@ import type {
   LogTail,
   RetryDeploymentRequest,
   WhoAmI,
-} from "@shipyard/shared";
+} from "@ease-deploy/shared";
 import type { ConfigStore } from "../core/config.ts";
 import type { AccessConfig } from "../core/types.ts";
 import type { DeploymentService } from "../service/deployments.ts";

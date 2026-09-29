@@ -1,7 +1,7 @@
 import { mkdtemp, readdir, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { redactUrl } from "@shipyard/shared";
+import { redactUrl } from "@ease-deploy/shared";
 import { runBuild, runInstall } from "../core/builder.ts";
 import { upload } from "../core/deployer.ts";
 import { buildCloneArgs, clone, headCommit } from "../core/git.ts";

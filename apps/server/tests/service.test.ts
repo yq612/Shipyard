@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { replayProgress } from "@shipyard/shared";
+import { replayProgress } from "@ease-deploy/shared";
 import { ServiceError } from "../src/service/errors.ts";
 import { Scheduler } from "../src/service/scheduler.ts";
 import { CONFIG_YAML, OPERATOR, setupService, until, type TestEnv } from "./helpers.ts";

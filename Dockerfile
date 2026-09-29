@@ -24,7 +24,7 @@ COPY package.json bun.lock tsconfig.base.json ./
 COPY packages/shared/package.json packages/shared/
 COPY apps/server/package.json apps/server/
 COPY apps/web/package.json apps/web/
-RUN bun install --frozen-lockfile --production --filter @shipyard/server
+RUN bun install --frozen-lockfile --production --filter @ease-deploy/server
 COPY packages/shared packages/shared
 COPY apps/server apps/server
 COPY --from=web /app/apps/web/dist apps/web/dist

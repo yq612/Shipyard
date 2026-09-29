@@ -1,6 +1,6 @@
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, writeSync } from "node:fs";
 import { join } from "node:path";
-import type { LogLine } from "@shipyard/shared";
+import type { LogLine } from "@ease-deploy/shared";
 
 export const MAX_LINE_BYTES = 4 * 1024;
 export const MAX_LOG_BYTES = 20 * 1024 * 1024;

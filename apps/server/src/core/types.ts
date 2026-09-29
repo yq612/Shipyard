@@ -1,4 +1,4 @@
-import type { Country, LogStream } from "@shipyard/shared";
+import type { Country, LogStream } from "@ease-deploy/shared";
 
 export interface SshConfig {
   user: string;

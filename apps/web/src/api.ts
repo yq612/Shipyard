@@ -11,7 +11,7 @@ import type {
   PlanResponse,
   ServerStatus,
   WhoAmI,
-} from "@shipyard/shared";
+} from "@ease-deploy/shared";
 
 export class ApiError extends Error {
   constructor(
