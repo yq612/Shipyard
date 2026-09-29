@@ -16,7 +16,7 @@ import {
 import { api, errorMessage } from "../api.ts";
 import { useCanExecute } from "../components/Layout.tsx";
 import { LogViewer } from "../components/LogViewer.tsx";
-import { DeploymentStatusTag, Loading, Notice, NotifyText, PageHead, Steps, TaskIcon, type StepState } from "../components/ui.tsx";
+import { DeploymentStatusTag, Loading, Notice, NotifyValue, PageHead, Steps, TaskIcon, type StepState } from "../components/ui.tsx";
 import { useOperatorName } from "../lib/operator.ts";
 import { useDeploymentStream } from "../lib/sse.ts";
 import { formatDateTime, useNow, useSpinner } from "../lib/time.ts";
@@ -285,13 +285,23 @@ function ResultPanel({ detail, onViewLog }: { detail: Detail; onViewLog: (i: num
 
   return (
     <section style={{ marginBottom: "var(--s-2)" }}>
-      <div className={`result result--${tone}`}>
+      <div className={`result result--${tone} is-${d.status}`}>
+        <span className="result__badge" aria-hidden="true" />
         <p className="result__big">{DEPLOYMENT_STATUS_NAMES[d.status]}</p>
-        <div className="result__facts">
-          <span>成功 <b>{d.doneCount}/{d.envCount}</b></span>
-          <span>总耗时 <b>{total}</b></span>
-          <span><NotifyText status={d.notifyStatus} error={d.notifyError} /></span>
-        </div>
+        <dl className="result__stats">
+          <div className="result__stat">
+            <dt>成功</dt>
+            <dd><b>{d.doneCount}</b><span className="result__of">/{d.envCount}</span></dd>
+          </div>
+          <div className="result__stat">
+            <dt>总耗时</dt>
+            <dd><b>{total}</b></dd>
+          </div>
+          <div className="result__stat">
+            <dt>飞书通知</dt>
+            <dd><NotifyValue status={d.notifyStatus} error={d.notifyError} /></dd>
+          </div>
+        </dl>
       </div>
 
       <div className="table-wrap" style={{ marginTop: "var(--s-2)" }}>

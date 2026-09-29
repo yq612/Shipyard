@@ -63,7 +63,7 @@
 .sec-title { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-2); margin: 0 0 var(--s-2); font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); }
 
 /* ---------- 步骤条：①选择国家 → ⑤完成 ---------- */
-.steps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: var(--s-4) 0; padding: 0; list-style: none; border: var(--bw) solid var(--c-line-strong); background: var(--c-screen); }
+.steps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: var(--s-4) 0; padding: 0; list-style: none; border: var(--bw) solid var(--c-ink-3); background: var(--c-screen); }
 .step { display: flex; align-items: center; gap: var(--s-2); min-width: 0; padding: var(--s-2) var(--s-3); font: 400 var(--t-14)/24px var(--f-body); color: var(--c-ink-3); }
 .step + .step { border-left: var(--bw) solid var(--c-line); }
 .step__no { display: inline-grid; place-items: center; flex: none; width: 24px; height: 24px; font: 400 var(--t-12)/1 var(--f-pixel); border: var(--bw) solid currentColor; }
@@ -152,12 +152,30 @@ button.step:hover .step__no { color: inherit; }
 .check:indeterminate::after { content: ""; width: 8px; height: 2px; background: var(--c-accent-ink); }
 .check:disabled { cursor: not-allowed; opacity: .5; }
 
-/* 下拉：和输入框同一套边框 */
-.select { padding: var(--s-1) var(--s-4) var(--s-1) var(--s-2); font: 400 var(--t-14)/24px var(--f-body); color: var(--c-ink); background: var(--c-screen); border: var(--bw) solid var(--c-line-strong); border-radius: 0; appearance: none; cursor: pointer;
-  background-image: linear-gradient(45deg, transparent 50%, var(--c-ink-2) 50%), linear-gradient(135deg, var(--c-ink-2) 50%, transparent 50%);
-  background-position: calc(100% - 15px) 50%, calc(100% - 10px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
-.select:focus-visible { border-color: var(--c-accent-ink); }
-.select option { background: var(--c-raised); color: var(--c-ink); }
+/* 下拉（components/Select.tsx）：原生 <select> 的选项列表改不了样式，所以自己画。
+   框和输入框同一套边框；展开后列表贴在框下沿，两条边框叠成一条。
+   选项悬停和键盘高亮都用文字色反显，已选项用主色加对勾 */
+.select { position: relative; }
+.select__box { display: flex; align-items: center; gap: var(--s-2); padding: var(--s-1) var(--s-2); font: 400 var(--t-14)/24px var(--f-body); color: var(--c-ink); background: var(--c-screen); border: var(--bw) solid var(--c-line-strong); cursor: pointer; user-select: none; transition: var(--tr-hover); }
+.select__box:hover { border-color: var(--c-ink-3); }
+.select__box:focus-visible { outline: none; border-color: var(--c-accent-ink); box-shadow: inset 0 0 0 1px var(--c-accent-ink); }
+.select.is-open .select__box { border-color: var(--c-accent-ink); }
+.select__box[aria-disabled="true"] { color: var(--c-ink-3); border-color: var(--c-line); cursor: not-allowed; }
+/* 所有选项文字叠在同一格里，框按最长的那个撑开，换选项时宽度不跳 */
+.select__value { flex: 1; display: grid; white-space: nowrap; }
+.select__value > * { grid-area: 1 / 1; }
+.select__sizer { visibility: hidden; }
+.select__caret { flex: none; width: 12px; height: 12px; background-color: var(--c-ink-2); mask: url("../assets/caret.svg") center / contain no-repeat; }
+.select.is-open .select__caret { background-color: var(--c-accent-ink); transform: scaleY(-1); }
+.select__list { position: absolute; top: calc(100% - var(--bw)); left: 0; z-index: 10; min-width: 100%; max-height: 324px; margin: 0; padding: var(--s-1) 0; overflow-y: auto; list-style: none; background: var(--c-raised); border: var(--bw) solid var(--c-accent-ink); }
+.select.is-up .select__list { top: auto; bottom: calc(100% - var(--bw)); }
+.select__opt { display: flex; align-items: center; gap: var(--s-1); padding: var(--s-1) var(--s-2); font: 400 var(--t-14)/24px var(--f-body); color: var(--c-ink-2); white-space: nowrap; cursor: pointer; }
+.select__opt[aria-selected="true"] { color: var(--c-accent-ink); }
+.select__opt.is-active { background: var(--c-ink); color: var(--c-screen); }
+.select__opt[aria-disabled="true"] { color: var(--c-ink-3); cursor: not-allowed; }
+.select__mark { flex: none; display: inline-grid; place-items: center; width: 12px; }
+.select__hint { margin-left: var(--s-2); font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); }
+.select__opt.is-active .select__hint { color: inherit; }
 .field--inline .field__box { min-width: 240px; }
 .field--sm .field__input { padding: var(--s-1) 0; font-size: var(--t-14); }
 
@@ -285,17 +303,38 @@ button.step:hover .step__no { color: inherit; }
 .ansi-white-fg, .ansi-bright-white-fg { color: var(--c-ink); }
 .log__text [class*="-bg"] { background: transparent; }
 
-/* ---------- ⑤ 完成 ---------- */
-.result { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--s-2) var(--s-4); align-items: center; padding: var(--s-4); border: var(--bw) solid var(--c-line-strong); background: var(--scan-panel), var(--c-panel); }
-.result--ok { border-color: var(--c-phosphor); }
-.result--warn { border-color: var(--c-amber); }
-.result--err { border-color: var(--c-red); }
-.result__big { margin: 0; font: 400 var(--t-48)/60px var(--f-display); font-synthesis: none; }
-.result--ok .result__big { color: var(--c-phosphor); }
-.result--warn .result__big { color: var(--c-amber); }
-.result--err .result__big { color: var(--c-red); }
-.result__facts { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-4); font-size: var(--t-14); line-height: 24px; color: var(--c-ink-2); }
-.result__facts b { font-weight: 500; color: var(--c-ink); }
+/* ---------- ⑤ 完成 ----------
+   结果面板：左边状态图标，中间大字结论，右边三项读数。
+   --tone 是这次结果的信号色，边框、图标、大字都取它 */
+.result {
+  --tone: var(--c-line-strong);
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--s-4);
+  padding: var(--s-4);
+  border: var(--bw) solid var(--tone);
+  background: var(--scan-panel), color-mix(in srgb, var(--tone) 6%, var(--c-panel));
+}
+.result--ok { --tone: var(--c-phosphor); --glyph: url("../assets/check.svg"); }
+.result--warn { --tone: var(--c-amber); --glyph: url("../assets/bang.svg"); }
+.result--err { --tone: var(--c-red); --glyph: url("../assets/cross.svg"); }
+.result.is-cancelled { --glyph: url("../assets/stop.svg"); }
+
+/* 图标：60px 方框里放 36px 像素图标，都是 12 的倍数，放大后像素边缘仍然清楚 */
+.result__badge { display: grid; place-items: center; width: 60px; height: 60px; border: var(--bw-strong) solid var(--tone); }
+.result__badge::before { content: ""; width: 36px; height: 36px; background: var(--tone); mask: var(--glyph) center / contain no-repeat; }
+
+/* 结论只有中文，直接用缝合像素；48px 正好是 12px 像素字的 4 倍 */
+.result__big { min-width: 0; margin: 0; font: 400 var(--t-48)/60px var(--f-pixel); font-synthesis: none; color: var(--tone); }
+.result--ok .result__big { text-shadow: var(--glow-ink); }
+
+/* 三项读数：像仪表盘上的数码管，竖线隔开 */
+.result__stats { display: flex; margin: 0; }
+.result__stat { display: grid; align-content: center; gap: var(--s-1); min-width: 120px; padding: 0 var(--s-4); border-left: var(--bw) solid var(--c-line); }
+.result__stat:last-child { padding-right: 0; }
+.result__stat dt { font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); }
+.result__stat dd { margin: 0; font: 400 var(--t-16)/24px var(--f-body); color: var(--c-ink-2); white-space: nowrap; }
+.result__stat b { font: 400 var(--t-24)/24px var(--f-display); font-synthesis: none; color: var(--c-ink); }
+.result__of { font-size: var(--t-14); color: var(--c-ink-3); }
+
 
 /* ---------- 发布记录筛选 ---------- */
 .filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s-2); margin: var(--s-4) 0 var(--s-3); }
@@ -320,6 +359,9 @@ button.step:hover .step__no { color: inherit; }
   .task__time { display: none; }
   .plan-step { grid-template-columns: 24px minmax(0, 1fr); }
   .plan-step__cmds { grid-column: 1 / -1; }
-  .result { grid-template-columns: 1fr; }
+  .result { grid-template-columns: auto minmax(0, 1fr); gap: var(--s-3); }
+  .result__stats { grid-column: 1 / -1; flex-wrap: wrap; row-gap: var(--s-2); }
+  .result__stat { min-width: 0; padding: 0 var(--s-3); }
+  .result__stat:first-child { padding-left: 0; border-left: 0; }
   .head__title { font-size: var(--t-24); line-height: 36px; }
 }

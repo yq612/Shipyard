@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router";
 import type { DeploymentStatus, DeploymentSummary } from "@shipyard/shared";
 import { DEPLOYMENT_STATUS_NAMES, formatDuration, isDeploymentActive } from "@shipyard/shared";
 import { api, errorMessage } from "../api.ts";
+import { Select } from "../components/Select.tsx";
 import { DeploymentStatusTag, Loading, Notice, PageHead } from "../components/ui.tsx";
 import { formatDateTime } from "../lib/time.ts";
 
@@ -60,41 +61,28 @@ export function Deployments() {
       <PageHead title="发布记录" meta="点击任意一行查看当时的执行参数、进度和日志。" />
 
       <div className="filters">
-        <label className="field">
-          <span className="field__label">国家</span>
-          <select className="select" value={country} onChange={(e) => set("country", e.target.value)}>
-            <option value="">全部国家</option>
-            {config.data?.countries.map((c) => (
-              <option key={c.code} value={c.code}>{c.name}（{c.code}）</option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          <span className="field__label">环境</span>
-          <select className="select" value={env} onChange={(e) => set("env", e.target.value)}>
-            <option value="">全部环境</option>
-            {envOptions.map((n) => (
-              <option key={n} value={n}>{n}</option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          <span className="field__label">状态</span>
-          <select className="select" value={status} onChange={(e) => set("status", e.target.value)}>
-            <option value="">全部状态</option>
-            {STATUSES.map((s) => (
-              <option key={s} value={s}>{DEPLOYMENT_STATUS_NAMES[s]}</option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          <span className="field__label">时间</span>
-          <select className="select" value={range} onChange={(e) => set("range", e.target.value)}>
-            {RANGES.map(([k, label]) => (
-              <option key={k} value={k}>{label}</option>
-            ))}
-          </select>
-        </label>
+        <Select
+          label="国家"
+          value={country}
+          onChange={(v) => set("country", v)}
+          options={[
+            { value: "", label: "全部国家" },
+            ...(config.data?.countries ?? []).map((c) => ({ value: c.code, label: c.name, hint: c.code })),
+          ]}
+        />
+        <Select
+          label="环境"
+          value={env}
+          onChange={(v) => set("env", v)}
+          options={[{ value: "", label: "全部环境" }, ...envOptions.map((n) => ({ value: n, label: n }))]}
+        />
+        <Select
+          label="状态"
+          value={status}
+          onChange={(v) => set("status", v)}
+          options={[{ value: "", label: "全部状态" }, ...STATUSES.map((s) => ({ value: s, label: DEPLOYMENT_STATUS_NAMES[s] }))]}
+        />
+        <Select label="时间" value={range} onChange={(v) => set("range", v)} options={RANGES.map(([k, label]) => ({ value: k, label }))} />
         {(country || env || status || range) && (
           <button type="button" className="btn btn--ghost btn--sm" onClick={() => setParams(new URLSearchParams())}>
             清除筛选

@@ -101,11 +101,12 @@ export function TaskIcon({ status }: { status: TaskStatus }) {
   }
 }
 
-export function NotifyText({ status, error }: { status: NotifyStatus | null; error: string | null }) {
-  if (!status) return <span className="muted">飞书通知：等待任务结束</span>;
-  if (status === "sent") return <span>飞书通知：<span className="ok">已发送</span></span>;
-  if (status === "failed") return <span>飞书通知：<span className="err">发送失败</span>{error ? `（${error}）` : ""}</span>;
-  return <span className="muted">飞书通知：{error ?? "未配置"}</span>;
+// Value only — the caller supplies the "飞书通知" label.
+export function NotifyValue({ status, error }: { status: NotifyStatus | null; error: string | null }) {
+  if (!status) return <span className="muted">等待任务结束</span>;
+  if (status === "sent") return <span className="ok">已发送</span>;
+  if (status === "failed") return <span className="err" title={error ?? undefined}>发送失败</span>;
+  return <span className="muted">{error ?? "未配置"}</span>;
 }
 
 export function Notice({ tone = "info", children }: { tone?: "info" | "warn" | "err" | "ok"; children: ReactNode }) {
