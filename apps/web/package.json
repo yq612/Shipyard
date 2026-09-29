@@ -12,7 +12,6 @@
     "@shipyard/shared": "workspace:*",
     "@tanstack/react-query": "^5.104.0",
     "ansi_up": "^6.0.6",
-    "flag-icons": "^7.5.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-router": "^7.18.4",

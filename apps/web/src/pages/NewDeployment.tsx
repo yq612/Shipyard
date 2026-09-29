@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router";
 import type { ConfigView, CountryView, EnvBusyDetail, EnvView, PlanResponse } from "@shipyard/shared";
 import { STAGE_NAMES, TASK_STATUS_NAMES, shortSha } from "@shipyard/shared";
 import { ApiError, api, errorMessage } from "../api.ts";
+import { CountryCard } from "../components/CountryCard.tsx";
 import { useCanExecute } from "../components/Layout.tsx";
 import { CheckIcon, Loading, Notice, PageHead, Steps, type StepState } from "../components/ui.tsx";
 import { useOperatorName } from "../lib/operator.ts";
@@ -110,21 +111,7 @@ function CountryStep({ config, selected, onPick }: { config: ConfigView; selecte
   return (
     <div className="countries" role="list">
       {config.countries.map((c) => (
-        <button
-          key={c.code}
-          type="button"
-          role="listitem"
-          className={`country${c.code === selected ? " is-current" : ""}`}
-          onClick={() => onPick(c.code)}
-        >
-          <span className="country__code">{c.code}</span>
-          <p className="country__name">{c.name}</p>
-          <p className="country__envs">{c.environments.map((e) => e.name.replace(/\s*环境$/, "")).join(" · ")}</p>
-          <span className="country__meta">
-            <span>{c.environments.length} 个环境</span>
-            {c.busyCount > 0 && <span className="status status--ok">{c.busyCount} 个发布中</span>}
-          </span>
-        </button>
+        <CountryCard key={c.code} country={c} current={c.code === selected} onPick={onPick} />
       ))}
     </div>
   );
