@@ -222,7 +222,7 @@ describe("process runner", () => {
 
   test("abort kills the whole process group", async () => {
     const ctl = new AbortController();
-    const marker = `ease-deploy-test-${Date.now()}`;
+    const marker = `shipyard-test-${Date.now()}`;
     const p = spawnRunner("sh", ["-c", `sleep 30 & sleep 30; echo ${marker}`], { signal: ctl.signal });
     await Bun.sleep(100);
     ctl.abort();

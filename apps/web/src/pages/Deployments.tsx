@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearchParams } from "react-router";
-import type { DeploymentStatus, DeploymentSummary } from "@ease-deploy/shared";
-import { DEPLOYMENT_STATUS_NAMES, formatDuration, isDeploymentActive } from "@ease-deploy/shared";
+import type { DeploymentStatus, DeploymentSummary } from "@shipyard/shared";
+import { DEPLOYMENT_STATUS_NAMES, formatDuration, isDeploymentActive } from "@shipyard/shared";
 import { api, errorMessage } from "../api.ts";
 import { DeploymentStatusTag, Loading, Notice, PageHead } from "../components/ui.tsx";
 import { formatDateTime } from "../lib/time.ts";

@@ -18,7 +18,7 @@ import type {
   ProgressState,
   ServerStatus,
   Stage,
-} from "@ease-deploy/shared";
+} from "@shipyard/shared";
 import {
   deploymentStatusOf,
   initialProgressState,
@@ -26,7 +26,7 @@ import {
   redactUrl,
   reduceProgress,
   replayProgress,
-} from "@ease-deploy/shared";
+} from "@shipyard/shared";
 import { envSpecOf, findCountry, lockKey, type ConfigStore } from "../core/config.ts";
 import { buildCardInput } from "./notify-card.ts";
 import { buildFeishuCard, sendFeishu, type FeishuCard, type SendResult } from "../core/notify.ts";

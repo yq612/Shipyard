@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router";
-import type { DeploymentDetail as Detail, DeploymentEnvView, ProgressState, ProgressTask, Stage } from "@ease-deploy/shared";
+import type { DeploymentDetail as Detail, DeploymentEnvView, ProgressState, ProgressTask, Stage } from "@shipyard/shared";
 import {
   DEPLOYMENT_STATUS_NAMES,
   STAGES,
@@ -13,7 +13,7 @@ import {
   stageTotals,
   taskCounts,
   taskElapsed,
-} from "@ease-deploy/shared";
+} from "@shipyard/shared";
 import { api, errorMessage } from "../api.ts";
 import { useCanExecute } from "../components/Layout.tsx";
 import { LogViewer } from "../components/LogViewer.tsx";

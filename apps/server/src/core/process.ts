@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { redactUrl } from "@ease-deploy/shared";
+import { redactUrl } from "@shipyard/shared";
 import type { Runner } from "./types.ts";
 
 export class CancelledError extends Error {

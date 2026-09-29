@@ -1,4 +1,4 @@
-import type { CommitInfo } from "@ease-deploy/shared";
+import type { CommitInfo } from "@shipyard/shared";
 import { spawnRunner } from "./process.ts";
 import type { RunOptions, Runner } from "./types.ts";
 

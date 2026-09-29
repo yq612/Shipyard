@@ -5,8 +5,8 @@ import type {
   LogLine,
   LogTail,
   ProgressMessage,
-} from "@ease-deploy/shared";
-import { deploymentStatusOf, reduceProgress } from "@ease-deploy/shared";
+} from "@shipyard/shared";
+import { deploymentStatusOf, reduceProgress } from "@shipyard/shared";
 
 export type ConnState = "connecting" | "open" | "reconnecting" | "closed";
 

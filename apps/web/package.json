@@ -1,5 +1,5 @@
 {
-  "name": "@ease-deploy/web",
+  "name": "@shipyard/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@ease-deploy/shared": "workspace:*",
+    "@shipyard/shared": "workspace:*",
     "@tanstack/react-query": "^5.104.0",
     "ansi_up": "^6.0.6",
     "react": "^19.3.0",

@@ -1,8 +1,8 @@
 import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router";
-import type { ConfigView, CountryView, EnvBusyDetail, EnvView, PlanResponse } from "@ease-deploy/shared";
-import { STAGE_NAMES, TASK_STATUS_NAMES, shortSha } from "@ease-deploy/shared";
+import type { ConfigView, CountryView, EnvBusyDetail, EnvView, PlanResponse } from "@shipyard/shared";
+import { STAGE_NAMES, TASK_STATUS_NAMES, shortSha } from "@shipyard/shared";
 import { ApiError, api, errorMessage } from "../api.ts";
 import { useCanExecute } from "../components/Layout.tsx";
 import { Loading, Notice, PageHead, Steps, type StepState } from "../components/ui.tsx";

@@ -1,4 +1,4 @@
-import type { DeploymentEnvView, DeploymentSummary } from "@ease-deploy/shared";
+import type { DeploymentEnvView, DeploymentSummary } from "@shipyard/shared";
 import type { CardInput } from "../core/notify.ts";
 
 export function buildCardInput(summary: DeploymentSummary, envs: DeploymentEnvView[], publicUrl?: string): CardInput {

@@ -9,8 +9,8 @@ import type {
   ProgressEvent,
   Stage,
   TaskStatus,
-} from "@ease-deploy/shared";
-import { redactUrl } from "@ease-deploy/shared";
+} from "@shipyard/shared";
+import { redactUrl } from "@shipyard/shared";
 import type { EnvSpec } from "../core/types.ts";
 
 export interface NewDeployment {

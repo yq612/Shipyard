@@ -1,5 +1,5 @@
 {
-  "name": "@ease-deploy/server",
+  "name": "@shipyard/server",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -8,7 +8,7 @@
     "start": "bun src/main.ts"
   },
   "dependencies": {
-    "@ease-deploy/shared": "workspace:*",
+    "@shipyard/shared": "workspace:*",
     "hono": "^4.13.11",
     "ipaddr.js": "^2.5.0",
     "node-ssh": "^13.2.1",

@@ -2,7 +2,7 @@ import { rm as fsRm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NodeSSH } from "node-ssh";
-import { formatDuration } from "@ease-deploy/shared";
+import { formatDuration } from "@shipyard/shared";
 import { CancelledError, spawnRunner, throwIfAborted } from "./process.ts";
 import type { LogFn, Runner, UploadTarget } from "./types.ts";
 

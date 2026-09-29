@@ -3,17 +3,17 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "ease-deploy",
+      "name": "shipyard",
       "devDependencies": {
         "@types/bun": "^1.3.14",
         "typescript": "~5.9.3",
       },
     },
     "apps/server": {
-      "name": "@ease-deploy/server",
+      "name": "@shipyard/server",
       "version": "0.1.0",
       "dependencies": {
-        "@ease-deploy/shared": "workspace:*",
+        "@shipyard/shared": "workspace:*",
         "hono": "^4.13.11",
         "ipaddr.js": "^2.5.0",
         "node-ssh": "^13.2.1",
@@ -21,10 +21,10 @@
       },
     },
     "apps/web": {
-      "name": "@ease-deploy/web",
+      "name": "@shipyard/web",
       "version": "0.1.0",
       "dependencies": {
-        "@ease-deploy/shared": "workspace:*",
+        "@shipyard/shared": "workspace:*",
         "@tanstack/react-query": "^5.104.0",
         "ansi_up": "^6.0.6",
         "react": "^19.3.0",
@@ -40,7 +40,7 @@
       },
     },
     "packages/shared": {
-      "name": "@ease-deploy/shared",
+      "name": "@shipyard/shared",
       "version": "0.1.0",
     },
   },
@@ -82,12 +82,6 @@
     "@babel/traverse": ["@babel/traverse@7.29.8", "", { "dependencies": { "@babel/code-frame": "^7.29.7", "@babel/generator": "^7.29.8", "@babel/helper-globals": "^7.29.7", "@babel/parser": "^7.29.8", "@babel/template": "^7.29.7", "@babel/types": "^7.29.8", "debug": "^4.3.1" } }, "sha512-I5z7H3bf/41ktsNVLtpN0wAa336HkqIHQ5BuPLEhTkt1jVSyZpeNKIzTgEWmlxjdg81R0IgUCcaE+Ok3NvrfZg=="],
 
     "@babel/types": ["@babel/types@7.29.8", "", { "dependencies": { "@babel/helper-string-parser": "^7.29.7", "@babel/helper-validator-identifier": "^7.29.7" } }, "sha512-Vj1jF3cPfxg7OAfoI7QnVKLoILlm2JF9pnVHrX8qx7AHMiYWT+NDAA7jChlNgRS4WTLc/fD1lXLmPixluj+3Gg=="],
-
-    "@ease-deploy/server": ["@ease-deploy/server@workspace:apps/server"],
-
-    "@ease-deploy/shared": ["@ease-deploy/shared@workspace:packages/shared"],
-
-    "@ease-deploy/web": ["@ease-deploy/web@workspace:apps/web"],
 
     "@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.28.2", "", { "os": "aix", "cpu": "ppc64" }, "sha512-XExcO+dvLKvVtNTibSTBej1NCAbaGhWn9Ww1ZPx80qsahhPFe/8jgWP0IchNe0F3HwkU7n8ejhH8bjonqht8mQ=="],
 
@@ -204,6 +198,12 @@
     "@rollup/rollup-win32-x64-gnu": ["@rollup/rollup-win32-x64-gnu@4.63.5", "", { "os": "win32", "cpu": "x64" }, "sha512-U3teMeMbXFmaM5D+OTJpsOXd+wV/qftIeYF9kBKL4v73641qyJmoXFtA28DQLsnmlyayEsTe72xpLHrArq6vHw=="],
 
     "@rollup/rollup-win32-x64-msvc": ["@rollup/rollup-win32-x64-msvc@4.63.5", "", { "os": "win32", "cpu": "x64" }, "sha512-ypfC34F3RKXvCXBglGqGMsUSMKlgwd1HX9AOAlx9RoZZ6GaI42YHVeKpzg3JG+wpBUJYTG+NNZhqbDWL8tBZkw=="],
+
+    "@shipyard/server": ["@shipyard/server@workspace:apps/server"],
+
+    "@shipyard/shared": ["@shipyard/shared@workspace:packages/shared"],
+
+    "@shipyard/web": ["@shipyard/web@workspace:apps/web"],
 
     "@tanstack/query-core": ["@tanstack/query-core@5.104.0", "", {}, "sha512-JrC2r/JQlXt7khBSdUpsgxNvybzOg+aITa+ARRMlP2AFo93Y8vIqz077rp+e61mJetSZ0T6AJbwW1JHer1vrPQ=="],
 

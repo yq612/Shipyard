@@ -1,4 +1,4 @@
-import type { ErrorCode } from "@ease-deploy/shared";
+import type { ErrorCode } from "@shipyard/shared";
 
 // Errors the HTTP layer turns into `{ code, message, details }` responses.
 export class ServiceError extends Error {

@@ -1,7 +1,7 @@
 import { readFileSync, statSync } from "node:fs";
 import { dirname, isAbsolute, resolve } from "node:path";
 import { parse } from "yaml";
-import type { Country, Environment } from "@ease-deploy/shared";
+import type { Country, Environment } from "@shipyard/shared";
 import type { AccessConfig, AppConfig, EnvSpec, ServerConfig } from "./types.ts";
 
 export class ConfigError extends Error {

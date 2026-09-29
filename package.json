@@ -1,5 +1,5 @@
 {
-  "name": "ease-deploy",
+  "name": "shipyard",
   "private": true,
   "type": "module",
   "workspaces": [

@@ -1,5 +1,5 @@
-import type { CommitInfo, EnvOutcome, LogStream, Stage, StageResult } from "@ease-deploy/shared";
-import { STAGE_NAMES, formatDuration, shortSha } from "@ease-deploy/shared";
+import type { CommitInfo, EnvOutcome, LogStream, Stage, StageResult } from "@shipyard/shared";
+import { STAGE_NAMES, formatDuration, shortSha } from "@shipyard/shared";
 import { CancelledError } from "./process.ts";
 import type { EnvSpec, LogFn, SshCredentials, UploadTarget } from "./types.ts";
 

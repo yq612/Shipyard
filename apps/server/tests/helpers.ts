@@ -142,7 +142,7 @@ export interface TestEnv {
 }
 
 export function setupService(opts: { yaml?: string; notify?: (card: FeishuCard) => SendResult } = {}): TestEnv {
-  const dir = mkdtempSync(join(tmpdir(), "ease-deploy-test-"));
+  const dir = mkdtempSync(join(tmpdir(), "shipyard-test-"));
   const configPath = join(dir, "config.yaml");
   let version = 0;
   const writeConfig = (yaml: string) => {

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import type { DeploymentStatus, NotifyStatus, TaskStatus } from "@ease-deploy/shared";
-import { DEPLOYMENT_STATUS_NAMES, TASK_STATUS_NAMES } from "@ease-deploy/shared";
+import type { DeploymentStatus, NotifyStatus, TaskStatus } from "@shipyard/shared";
+import { DEPLOYMENT_STATUS_NAMES, TASK_STATUS_NAMES } from "@shipyard/shared";
 import { useSpinner } from "../lib/time.ts";
 
 export function PageHead({ title, meta, actions }: { title: ReactNode; meta?: ReactNode; actions?: ReactNode }) {
