@@ -31,22 +31,52 @@ bun run dev                                  # API :8080 + Vite :5173
 
 打开 http://localhost:5173 。`127.0.0.1` 默认在白名单里，本机可以直接发布。
 
-## 构建与运行
+想在本地看构建后的效果（一个端口同时提供 API 和页面）：`bun run build && bun run start`，打开 http://localhost:8080 。这只用于本地预览，不是部署方式。
+
+## 部署
+
+生产环境只用 [compose.yaml](compose.yaml) 部署。服务器需要 Docker（带 compose 插件）和 git，不需要装 Bun。
+
+**首次部署**
 
 ```bash
-bun run build     # 构建前端到 apps/web/dist
-bun run start     # 一个端口同时提供 API 和页面：http://localhost:8080
+git clone <本仓库> shipyard && cd shipyard
+mkdir -p data/ssh
+cp config.example.yaml data/config.yaml     # 按需修改：白名单、仓库令牌、飞书
+cp /path/to/deploy.pem data/ssh/deploy.pem && chmod 600 data/ssh/deploy.pem
+docker compose up -d --build
+curl -s http://127.0.0.1:8080/api/whoami    # 应返回 "ip":"127.0.0.1"
 ```
+
+**升级**
+
+```bash
+git pull && docker compose up -d --build
+```
+
+旧容器收到 SIGTERM 后不再接受新发布，等执行中的环境跑完（最多 10 分钟）再退出，新容器随后启动。服务日志用 `docker compose logs -f` 查看。
+
+**数据**
+
+运行时数据全在仓库根目录的 `data/` 里：`config.yaml`、`ssh/deploy.pem`、`shipyard.db`、`logs/`。这个目录不进 git，也不进镜像，重建容器、升级都不会动它；数据库表结构靠启动时的增量迁移升级，不会重建。所以：
+
+- 不要用 `rsync` / `scp` 整目录同步代码，会把本地的 `data/` 带过去。更新只用 `git pull`。
+- 不要在服务器上执行 `git clean -x`，会删掉 `data/`。
+- 备份：`docker compose stop`，打包整个 `data/`，再 `docker compose start`。数据库开了 WAL，运行中只拷 `shipyard.db` 一个文件会丢最近的写入。
+
+**网络**
+
+compose 使用 `network_mode: host`：服务看到的客户端 IP 和不用 Docker 时一致，IP 白名单才有效。不要改成 `ports:` 端口映射，否则宿主机和 nginx 发来的请求都会变成 Docker 网关地址（如 `172.18.0.1`）。前面有 nginx 时参考 [deploy/nginx.conf.example](deploy/nginx.conf.example)（SSE 需要关缓冲），并设置 `HOST: 127.0.0.1` 只监听本机。
+
+**环境变量**（写在 compose.yaml 的 `environment` 里）
 
 | 环境变量 | 默认 | 说明 |
 |---|---|---|
-| `DATA_DIR` | `./data` | 数据库、日志所在目录 |
-| `CONFIG_PATH` | `$DATA_DIR/config.yaml` | 配置文件 |
-| `PORT` | `server.port` | 覆盖配置里的端口 |
+| `PORT` | `server.port` | 监听端口。换端口改这里，健康检查也读它 |
+| `HOST` | `0.0.0.0` | 监听地址 |
 | `FEISHU_WEBHOOK` / `FEISHU_SECRET` | — | 覆盖配置里的飞书机器人 |
 | `SHUTDOWN_TIMEOUT_MS` | 600000 | 收到 SIGTERM 后等待执行中环境的最长时间 |
-
-Docker：见 [Dockerfile](Dockerfile) 和 [deploy/docker-compose.example.yml](deploy/docker-compose.example.yml)；前面有 nginx 时参考 [deploy/nginx.conf.example](deploy/nginx.conf.example)（SSE 需要关缓冲）。
+| `DATA_DIR` / `CONFIG_PATH` | `/data`、`$DATA_DIR/config.yaml` | 镜像里已设好，不用改 |
 
 ## 配置
 
@@ -78,5 +108,6 @@ bun run typecheck
 ## 上线前检查
 
 1. 目标机安全组放行本服务出口 IP 的 22 端口。
-2. 服务器上的 Codeup 拉取凭据（建议只读部署令牌）。
-3. 迁移完成后**轮换 SSH 私钥**，回收旧的 CLI 二进制文件（里面有旧私钥明文）。
+2. Codeup 拉取凭据（只读令牌）写进 `data/config.yaml` 的 `repos` 地址里，格式见 [config.example.yaml](config.example.yaml)。容器里读不到宿主机的 `~/.git-credentials` 或 credential helper。
+3. 在服务器上 `curl -s http://127.0.0.1:8080/api/whoami`，确认返回的不是 `172.x.x.x`：没开 `access.trustProxy` 时应是 `127.0.0.1`；开了之后本机直连不带 X-Forwarded-For，返回空 IP，这是预期的。经过 nginx 访问时，页面显示的 IP 应该是自己的真实出口 IP；显示「未知」说明 `trustProxy` 没开或 nginx 没转发 X-Forwarded-For，服务日志里有具体提示。填了 `access.allowedOrigins` 之后 Host 校验会拦这条请求，要加上 `-H 'Host: <对外域名>'`。
+4. 迁移完成后**轮换 SSH 私钥**，回收旧的 CLI 二进制文件（里面有旧私钥明文）。
