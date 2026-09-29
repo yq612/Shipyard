@@ -53,19 +53,50 @@ export function ipMatches(ip: string, rules: string[]): boolean {
   return false;
 }
 
-// The address we trust as "the client". Behind a proxy, X-Forwarded-For is read
-// right-to-left and the first hop that is not one of our proxies wins; the
-// left-most value is client-controlled and never trusted on its own.
-export function clientIp(socketIp: string, xff: string | undefined, access: AccessConfig): string {
+// Headers a reverse proxy adds. Seeing any of them from a proxy-looking peer
+// means that peer is forwarding for someone else.
+const FORWARDING_HEADERS = ["x-forwarded-for", "x-real-ip", "forwarded", "x-forwarded-host", "x-forwarded-proto"];
+
+export interface ClientAddress {
+  ip: string; // "" when it cannot be determined; never matches the allowlist
+  problem?: string; // why, for the operator's log
+}
+
+// The address we trust as "the client". A forwarded request is never
+// identified as the proxy itself: the proxy is usually on loopback, which is
+// allowlisted, so that would let everyone through. Loopback counts as a proxy
+// here even when it is missing from proxyIps.
+// Behind a trusted proxy, X-Forwarded-For is read right-to-left and the first
+// hop that is not one of our proxies wins; the left-most value is
+// client-controlled and never trusted on its own.
+export function clientAddress(
+  socketIp: string,
+  header: (name: string) => string | undefined,
+  access: AccessConfig,
+): ClientAddress {
   const peer = normalizeIp(socketIp);
-  if (!access.trustProxy || !xff || !ipMatches(peer, access.proxyIps)) return peer;
-  const hops = xff.split(",").map((s) => s.trim()).filter(Boolean);
-  for (let i = hops.length - 1; i >= 0; i--) {
-    const hop = normalizeIp(hops[i]!);
-    if (!parseIp(hop)) break;
-    if (!ipMatches(hop, access.proxyIps)) return hop;
+  const isProxy = ipMatches(peer, access.proxyIps);
+  if (!(access.trustProxy && isProxy)) {
+    const forwarded = FORWARDING_HEADERS.some((name) => header(name) !== undefined);
+    if (!forwarded || !(isProxy || parseIp(peer)?.range() === "loopback")) return { ip: peer };
+    const fix = access.trustProxy ? `把 ${peer} 加入 access.proxyIps` : "设置 access.trustProxy: true";
+    return {
+      ip: "",
+      problem: `收到经反向代理 ${peer} 转发的请求，无法确定真实来源 IP，已按未知 IP 处理。请在 config.yaml 中${fix}`,
+    };
   }
-  return peer;
+  const hops = (header("x-forwarded-for") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  for (let i = hops.length - 1; i >= 0; i--) {
+    const hop = parseIp(hops[i]!);
+    if (!hop) break;
+    const ip = hop.toString();
+    // Every hop so far is ours, so the left-most one was written by a proxy too.
+    if (!ipMatches(ip, access.proxyIps) || i === 0) return { ip };
+  }
+  return {
+    ip: "",
+    problem: `来自代理 ${peer} 的请求没有可用的 X-Forwarded-For，无法确定真实来源 IP，已按未知 IP 处理。请检查反向代理是否设置了 proxy_set_header X-Forwarded-For $remote_addr`,
+  };
 }
 
 export function isIpAllowed(ip: string, access: AccessConfig): boolean {

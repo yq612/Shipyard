@@ -18,7 +18,7 @@ import type { AccessConfig } from "../core/types.ts";
 import type { DeploymentService } from "../service/deployments.ts";
 import { ServiceError } from "../service/errors.ts";
 import type { LogStore } from "../store/logs.ts";
-import { clientIp, isHostAllowed, isIpAllowed, isOriginAllowed } from "./access.ts";
+import { clientAddress, isHostAllowed, isIpAllowed, isOriginAllowed } from "./access.ts";
 import { sse, writeQueue } from "./sse.ts";
 
 export interface AppDeps {
@@ -71,10 +71,19 @@ export function createApp(deps: AppDeps): Hono<Env> {
   });
 
   // Resolve the client IP once per request, against the latest access config.
+  // A proxy misconfiguration is logged once per distinct cause, not per request.
+  // The health check is skipped: container probes hit it on loopback without
+  // forwarding headers, which would otherwise read as a misconfigured proxy.
+  const reportedProblems = new Set<string>();
   app.use("*", async (c, next) => {
     const access = config.refresh().access;
     c.set("access", access);
-    c.set("ip", clientIp(deps.socketIp(c), c.req.header("x-forwarded-for"), access));
+    const { ip, problem } = clientAddress(deps.socketIp(c), (name) => c.req.header(name), access);
+    if (problem && c.req.path !== "/api/health" && !reportedProblems.has(problem)) {
+      reportedProblems.add(problem);
+      console.warn(`[access] ${problem}`);
+    }
+    c.set("ip", ip);
     await next();
   });
 
@@ -88,7 +97,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
   });
 
   const logRejection = (c: Context<Env>, reason: string) =>
-    console.warn(`[access] 拒绝 ${c.req.method} ${c.req.path} · IP ${c.get("ip")} · ${reason}`);
+    console.warn(`[access] 拒绝 ${c.req.method} ${c.req.path} · IP ${c.get("ip") || "未知"} · ${reason}`);
 
   // Writes: JSON only (forces a CORS preflight cross-site, which we never
   // answer), same-origin only, and the caller's IP must be allowlisted.
@@ -104,7 +113,9 @@ export function createApp(deps: AppDeps): Hono<Env> {
     }
     if (!isIpAllowed(c.get("ip"), access)) {
       logRejection(c, "IP 不在白名单");
-      return fail(c, 403, "IP_NOT_ALLOWED", `当前 IP ${c.get("ip")} 不在白名单，请联系管理员添加`);
+      return fail(c, 403, "IP_NOT_ALLOWED", c.get("ip")
+        ? `当前 IP ${c.get("ip")} 不在白名单，请联系管理员添加`
+        : "无法识别你的来源 IP（反向代理配置有误），请联系管理员检查 access.trustProxy / proxyIps");
     }
     await next();
   };
@@ -113,7 +124,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
     const access = c.get("access");
     if (access.protectReads && !isIpAllowed(c.get("ip"), access)) {
       logRejection(c, "查看类接口，IP 不在白名单");
-      return fail(c, 403, "IP_NOT_ALLOWED", `当前 IP ${c.get("ip")} 不在白名单，无权查看`);
+      return fail(c, 403, "IP_NOT_ALLOWED", `当前 IP ${c.get("ip") || "未知"} 不在白名单，无权查看`);
     }
     await next();
   };

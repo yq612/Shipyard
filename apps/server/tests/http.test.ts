@@ -119,6 +119,27 @@ describe("write protection", () => {
     expect(await json(res)).toMatchObject({ code: "IP_NOT_ALLOWED" });
   });
 
+  test("a local reverse proxy with trustProxy off does not pass everyone as 127.0.0.1", async () => {
+    const { call } = setup(); // socket peer 127.0.0.1, which is allowlisted
+    const proxied = { "x-forwarded-for": "198.51.100.1" };
+    const res = await call("POST", "/api/deployments", { body: BODY, headers: proxied });
+    expect(res.status).toBe(403);
+    expect(await json(res)).toMatchObject({ code: "IP_NOT_ALLOWED" });
+    expect(await json(await call("GET", "/api/whoami", { headers: proxied }))).toEqual({ ip: "", allowed: false, protectReads: false });
+  });
+
+  test("behind a trusted proxy the forwarded client IP is the one checked and recorded", async () => {
+    const { call } = setup({ yaml: CONFIG_YAML.replace("allowIps:", "trustProxy: true\n  allowIps:") });
+    const denied = await call("POST", "/api/deployments", { body: BODY, headers: { "x-forwarded-for": "198.51.100.1" } });
+    expect(denied.status).toBe(403);
+
+    const res = await call("POST", "/api/deployments", { body: BODY, headers: { "x-forwarded-for": "10.8.3.4" } });
+    expect(res.status).toBe(201);
+    const { id } = await json(res);
+    const detail = await json(await call("GET", `/api/deployments/${id}`));
+    expect(detail.deployment).toMatchObject({ operatorIp: "10.8.3.4" });
+  });
+
   test("cross-site or origin-less writes are rejected even from an allowlisted IP", async () => {
     const { call } = setup();
     const evil = await call("POST", "/api/deployments", { body: BODY, headers: { origin: "https://evil.example" } });
