@@ -1,0 +1,12 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.DS_Store
+*.log
+
+# 运行时数据：配置、私钥、数据库、日志都挂载进来，不进 git
+data/*
+!data/.gitkeep
+
+# SSH 私钥 / 证书 —— 绝不入库
+*.pem

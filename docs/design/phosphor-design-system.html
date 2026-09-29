@@ -1,0 +1,812 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>磷光 Phosphor 设计体系 v1.2</title>
+<!-- 主题脚本放最前面，页面画出来之前就定好主题，打开时不闪（内容同 phosphor-theme.js） -->
+<script>
+(function () {
+  var KEY = 'phosphor-theme';
+  var root = document.documentElement;
+  var media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: light)') : null;
+  function read() {
+    try { var v = localStorage.getItem(KEY); return v === 'dark' || v === 'light' ? v : 'auto'; }
+    catch (e) { return 'auto'; }
+  }
+  var current = read();
+  function resolve(pref) {
+    if (pref === 'dark' || pref === 'light') return pref;
+    return media && media.matches ? 'light' : 'dark';
+  }
+  function syncButtons() {
+    var btns = document.querySelectorAll('[data-theme-set]');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].setAttribute('aria-pressed', String(btns[i].getAttribute('data-theme-set') === current));
+    }
+  }
+  function repaintScrollbar() {
+    var prev = root.style.overflow;
+    root.style.overflow = 'hidden';
+    void root.offsetWidth;
+    root.style.overflow = prev;
+  }
+  function apply() {
+    var theme = resolve(current);
+    root.classList.add('theme-switching');
+    root.setAttribute('data-theme', theme);
+    repaintScrollbar();
+    syncButtons();
+    requestAnimationFrame(function () { requestAnimationFrame(function () { root.classList.remove('theme-switching'); }); });
+    document.dispatchEvent(new CustomEvent('phosphor:themechange', { detail: { pref: current, theme: theme } }));
+  }
+  function set(pref) {
+    current = pref === 'dark' || pref === 'light' ? pref : 'auto';
+    try { if (current === 'auto') localStorage.removeItem(KEY); else localStorage.setItem(KEY, current); } catch (e) {}
+    apply();
+  }
+  root.setAttribute('data-theme', resolve(current));
+  if (media) {
+    var onSystemChange = function () { if (current === 'auto') apply(); };
+    if (media.addEventListener) media.addEventListener('change', onSystemChange);
+    else if (media.addListener) media.addListener(onSystemChange);
+  }
+  window.addEventListener('storage', function (e) { if (e.key === KEY) { current = read(); apply(); } });
+  function bind() {
+    syncButtons();
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest && e.target.closest('[data-theme-set]');
+      if (btn) set(btn.getAttribute('data-theme-set'));
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind); else bind();
+  window.phosphorTheme = { set: set, get: function () { return current; } };
+})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Pixel&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fontsapi.zeoseven.com/570/main/result.css">
+<style>
+/* ============ 设计体系（与 phosphor.css 内容相同） ============ */
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --c-screen: #0A0B09;
+  --c-panel: #121410;
+  --c-raised: #1A1D16;
+  --c-line: #2A2F24;
+  --c-line-strong: #454C3B;
+  --c-ink: #EAF2DF;
+  --c-ink-2: #A4AD97;
+  --c-ink-3: #7A8270;
+  --c-accent: #99D52A;
+  --c-accent-ink: #99D52A;
+  --c-on-accent: #0A0B09;
+  --c-accent-wash: rgba(153, 213, 42, .07);
+  --c-phosphor: #80EE64;
+  --c-mint: #BFF9B4;
+  --c-amber: #F5A524;
+  --c-red: #FF6B57;
+  --scan-panel: repeating-linear-gradient(to bottom, rgba(234, 242, 223, .045) 0 1px, transparent 1px 3px);
+  --scan-screen: repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0, 0, 0, .14) 2px 3px);
+  --vignette: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, .32) 100%);
+  --glow-accent: 0 0 6px rgba(153, 213, 42, .55), 0 0 18px rgba(153, 213, 42, .22);
+  --glow-btn: 0 0 18px rgba(153, 213, 42, .22);
+  --glow-ink: 0 0 24px rgba(234, 242, 223, .18);
+}
+[data-theme="light"] {
+  color-scheme: light;
+  --c-screen: #D2D7C3;
+  --c-panel: #DCE0CE;
+  --c-raised: #E4E7D8;
+  --c-line: #AEB59D;
+  --c-line-strong: #8A927A;
+  --c-ink: #1E2416;
+  --c-ink-2: #3A4230;
+  --c-ink-3: #555D45;
+  --c-accent: #99D52A;
+  --c-accent-ink: #3A5A0A;
+  --c-on-accent: #1E2416;
+  --c-accent-wash: rgba(153, 213, 42, .2);
+  --c-phosphor: #28621A;
+  --c-mint: #2C6650;
+  --c-amber: #7A4F00;
+  --c-red: #9E2C1A;
+  --scan-panel: repeating-linear-gradient(to bottom, rgba(30, 36, 22, .06) 0 1px, transparent 1px 3px);
+  --scan-screen: repeating-linear-gradient(to bottom, transparent 0 2px, rgba(30, 36, 22, .035) 2px 3px),
+    repeating-linear-gradient(to right, transparent 0 2px, rgba(30, 36, 22, .035) 2px 3px);
+  --vignette: none;
+  --glow-accent: none;
+  --glow-btn: none;
+  --glow-ink: none;
+}
+[data-theme] { color: var(--c-ink); background-color: var(--c-screen); }
+:root {
+  --f-display: "Geist Pixel", "Fusion Pixel 12px M latin", "Fusion Pixel 12px Mono latin", ui-monospace, monospace;
+  --f-pixel: "Fusion Pixel 12px M latin", "Fusion Pixel 12px Mono latin", "Geist Pixel", ui-monospace, monospace;
+  --f-body: "Geist Mono", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", ui-monospace, monospace;
+  --t-12: 12px; --t-14: 14px; --t-16: 16px; --t-24: 24px; --t-36: 36px; --t-48: 48px; --t-96: 96px;
+  --s-1: 6px; --s-2: 12px; --s-3: 18px; --s-4: 24px; --s-5: 36px; --s-6: 48px; --s-7: 72px; --s-8: 96px;
+  --radius: 0; --bw: 1px; --bw-strong: 2px;
+  --dur-boot: 700ms;
+  --dur-hover: 150ms;
+  --tr-hover: background-color var(--dur-hover) ease-out, color var(--dur-hover) ease-out, border-color var(--dur-hover) ease-out;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { background: var(--c-screen); scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--c-screen);
+  color: var(--c-ink);
+  font: 400 var(--t-16)/1.75 var(--f-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+body::after {
+  content: ""; position: fixed; inset: 0; z-index: 90; pointer-events: none;
+  background: var(--scan-screen), var(--vignette);
+}
+.crt-off body::after { display: none; }
+.theme-switching *, .theme-switching *::before, .theme-switching *::after { transition: none !important; }
+::selection { background: var(--c-accent); color: var(--c-on-accent); }
+:focus-visible { outline: 2px solid var(--c-accent-ink); outline-offset: 3px; }
+.ty-display { font-family: var(--f-display); font-weight: 400; font-synthesis: none; }
+.ty-pixel { font-family: var(--f-pixel); font-weight: 400; font-synthesis: none; }
+
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-track:vertical { border-left: var(--bw) solid var(--c-line); }
+::-webkit-scrollbar-track:horizontal { border-top: var(--bw) solid var(--c-line); }
+::-webkit-scrollbar-thumb {
+  background-color: var(--c-ink-3);
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  border-radius: 0;
+}
+::-webkit-scrollbar-thumb:hover { background-color: var(--c-ink-2); }
+::-webkit-scrollbar-thumb:active { background-color: var(--c-accent-ink); }
+::-webkit-scrollbar-corner { background: transparent; }
+@supports not selector(::-webkit-scrollbar) {
+  * { scrollbar-width: thin; scrollbar-color: var(--c-ink-3) transparent; }
+}
+
+.cursor {
+  display: inline-block; width: .5em; height: .9em; margin-left: .12em; vertical-align: middle;
+  background: var(--c-accent-ink); box-shadow: var(--glow-accent);
+  animation: ph-blink 1s steps(1, end) infinite;
+}
+@keyframes ph-blink { 50% { opacity: 0; } }
+.boot { animation: ph-crt-on var(--dur-boot) cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes ph-crt-on {
+  0%, 40% { transform: scaleY(.004); background-color: var(--c-ink); }
+  70% { transform: scaleY(1); background-color: color-mix(in srgb, var(--c-ink) 12%, transparent); }
+  100% { transform: scaleY(1); background-color: transparent; }
+}
+[data-theme="light"] .boot { animation: ph-lcd-on var(--dur-boot) steps(4, start) both; }
+@keyframes ph-lcd-on { from { opacity: 0; } to { opacity: 1; } }
+
+.btn {
+  display: inline-flex; align-items: center; gap: var(--s-1);
+  padding: var(--s-2) var(--s-3);
+  font: 500 var(--t-14)/24px var(--f-body);
+  color: var(--c-accent-ink); background: transparent;
+  border: var(--bw) solid var(--c-accent-ink); border-radius: var(--radius);
+  text-decoration: none; cursor: pointer;
+  transition: var(--tr-hover);
+}
+.btn:hover { background: var(--c-accent); color: var(--c-on-accent); }
+.btn--primary { background: var(--c-accent); color: var(--c-on-accent); box-shadow: var(--glow-btn); }
+.btn--primary:hover { background: var(--c-screen); color: var(--c-accent-ink); }
+.btn:disabled { color: var(--c-ink-3); border-color: var(--c-line-strong); background: transparent; box-shadow: none; cursor: not-allowed; }
+
+.link { color: var(--c-ink); text-decoration: underline dotted; text-underline-offset: 4px; padding: 0 2px; transition: var(--tr-hover); }
+.link:hover { background: var(--c-ink); color: var(--c-screen); text-decoration: none; }
+
+.tag {
+  display: inline-block; padding: var(--s-1) var(--s-2);
+  font: 400 var(--t-12)/18px var(--f-pixel); letter-spacing: 2px;
+  color: var(--c-ink-2); border: var(--bw) solid var(--c-line-strong); white-space: nowrap;
+}
+.tag--accent { color: var(--c-accent-ink); border-color: var(--c-accent-ink); }
+.status { display: inline-flex; align-items: center; gap: var(--s-1); font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); }
+.status::before { content: ""; width: 6px; height: 6px; background: currentColor; }
+.status--ok { color: var(--c-phosphor); }
+.status--warn { color: var(--c-amber); }
+.status--err { color: var(--c-red); }
+
+.layer {
+  position: relative; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--s-4);
+  padding: var(--s-4); background: var(--c-panel); border: var(--bw) solid var(--c-line);
+}
+.layer.is-active { border-color: var(--c-accent-ink); background: var(--scan-panel), var(--c-accent-wash); }
+.layer.is-current { border: var(--bw-strong) solid var(--c-accent-ink); padding: calc(var(--s-4) - 1px); background: var(--scan-panel), var(--c-accent-wash); }
+.layer__main { padding-right: var(--s-5); min-width: 0; }
+.layer__no { position: absolute; top: var(--s-2); right: var(--s-2); font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); }
+.layer.is-active .layer__no, .layer.is-current .layer__no { color: var(--c-accent-ink); }
+.layer__title { margin: 0; font: 400 var(--t-24)/36px var(--f-display); font-synthesis: none; }
+.layer__desc { margin: var(--s-1) 0 0; font-size: var(--t-14); line-height: 24px; color: var(--c-ink-2); }
+.layer-arrow { display: block; padding: var(--s-2) 0; text-align: center; font: 400 var(--t-24)/24px var(--f-display); color: var(--c-ink-3); }
+
+.term { border: var(--bw) solid var(--c-line-strong); background: var(--c-panel); min-width: 0; }
+.term__bar { display: flex; justify-content: space-between; align-items: center; gap: var(--s-2); padding: var(--s-1) var(--s-2); border-bottom: var(--bw) solid var(--c-line); font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); }
+.term__copy { font: inherit; color: var(--c-ink-2); background: none; border: var(--bw) solid var(--c-line-strong); padding: 0 var(--s-1); cursor: pointer; transition: var(--tr-hover); }
+.term__copy:hover { background: var(--c-ink); color: var(--c-screen); border-color: var(--c-ink); }
+.term__body { margin: 0; padding: var(--s-3); font: 400 var(--t-14)/24px var(--f-body); color: var(--c-ink-2); background: var(--scan-panel); overflow-x: auto; white-space: pre; }
+.t-p { color: var(--c-accent-ink); }
+.t-cmd { color: var(--c-ink); }
+.t-ok { color: var(--c-phosphor); }
+.t-warn { color: var(--c-amber); }
+.t-err { color: var(--c-red); }
+.t-str { color: var(--c-mint); }
+.t-com { color: var(--c-ink-3); }
+
+.field { display: grid; gap: var(--s-1); }
+.field__label { font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-2); }
+.field__box { display: flex; align-items: center; gap: var(--s-2); padding: 0 var(--s-2); background: var(--c-screen); border: var(--bw) solid var(--c-line-strong); }
+.field__box:focus-within { border-color: var(--c-accent-ink); box-shadow: inset 0 0 0 1px var(--c-accent-ink); }
+.field__prompt { font: 400 var(--t-16)/1 var(--f-display); color: var(--c-accent-ink); }
+.field__input { flex: 1; min-width: 0; padding: var(--s-2) 0; font: 400 var(--t-16)/24px var(--f-body); color: var(--c-ink); background: transparent; border: 0; outline: none; caret-color: var(--c-accent-ink); }
+.field__input::placeholder { color: var(--c-ink-3); }
+.field__msg { font-size: var(--t-12); line-height: 18px; color: var(--c-ink-3); }
+.field--error .field__box { border-color: var(--c-red); }
+.field--error .field__prompt, .field--error .field__msg { color: var(--c-red); }
+
+.nav { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-1); padding: var(--s-1); background: var(--c-screen); border: var(--bw) solid var(--c-line-strong); }
+.nav__brand { margin-right: var(--s-2); padding: 0 var(--s-2); font: 400 var(--t-24)/36px var(--f-display); font-synthesis: none; color: var(--c-ink); text-decoration: none; }
+.nav__link { padding: var(--s-1) var(--s-2); font: 400 var(--t-14)/24px var(--f-body); color: var(--c-ink-2); text-decoration: none; transition: var(--tr-hover); }
+.nav__link:hover { background: var(--c-ink); color: var(--c-screen); }
+.nav__link.is-current { background: var(--c-accent); color: var(--c-on-accent); }
+.nav__path { margin-left: auto; padding: 0 var(--s-2); font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); }
+
+.seg { display: inline-flex; background: var(--c-screen); border: var(--bw) solid var(--c-line-strong); }
+.seg__opt {
+  padding: var(--s-1) var(--s-2);
+  font: 400 var(--t-12)/18px var(--f-pixel);
+  color: var(--c-ink-2); background: transparent;
+  border: 0; border-radius: 0; cursor: pointer;
+  transition: var(--tr-hover);
+}
+.seg__opt + .seg__opt { border-left: var(--bw) solid var(--c-line-strong); }
+.seg__opt:hover { background: var(--c-ink); color: var(--c-screen); }
+.seg__opt[aria-pressed="true"] { background: var(--c-accent); color: var(--c-on-accent); }
+
+/* ============ 说明页排版 ============ */
+.page { max-width: 1104px; margin: 0 auto; padding: 0 var(--s-4) var(--s-7); }
+
+.hero { margin-top: var(--s-5); padding: var(--s-5); border: 1px solid var(--c-line-strong); background-image: var(--scan-panel); }
+.hero__bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--s-2); padding-bottom: var(--s-2); border-bottom: 1px solid var(--c-line); font: 400 12px/18px var(--f-pixel); color: var(--c-ink-3); }
+.hero__title { margin: var(--s-7) 0 0; font-size: 96px; line-height: 108px; text-shadow: var(--glow-ink); }
+.hero__sub { margin: var(--s-2) 0 0; font-size: 36px; line-height: 48px; color: var(--c-ink-2); }
+.hero__lead { margin: var(--s-5) 0 0; max-width: 34em; color: var(--c-ink-2); }
+.hero__actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-5); }
+
+.sec { padding-top: var(--s-8); }
+.sec__title { margin: 0; font-size: 36px; line-height: 48px; }
+.sec__prompt { color: var(--c-accent-ink); }
+.sec__desc { margin: var(--s-2) 0 0; max-width: 42em; font-size: 14px; line-height: 24px; color: var(--c-ink-2); }
+.sec__body { margin-top: var(--s-5); }
+.sub { margin: var(--s-5) 0 var(--s-2); font: 400 12px/18px var(--f-pixel); color: var(--c-ink-3); }
+.sub:first-child { margin-top: 0; }
+
+/* 主题对照 */
+.themes { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2); }
+.screen { border: 1px solid var(--c-line-strong); background-image: var(--scan-panel); min-width: 0; }
+.screen__bar { display: flex; justify-content: space-between; gap: var(--s-2); padding: var(--s-1) var(--s-2); border-bottom: 1px solid var(--c-line); font: 400 12px/18px var(--f-pixel); color: var(--c-ink-3); }
+.screen__body { display: grid; gap: var(--s-3); padding: var(--s-4); }
+.screen__title { margin: 0; font-size: 36px; line-height: 48px; text-shadow: var(--glow-ink); }
+.screen__text { margin: 0; font-size: 14px; line-height: 24px; color: var(--c-ink-2); }
+.screen__row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+.cmp { margin-top: var(--s-5); }
+.cmp__row { display: grid; grid-template-columns: 168px 1fr 1fr; gap: var(--s-4); padding: var(--s-2) 0; border-top: 1px solid var(--c-line); font-size: 14px; line-height: 24px; }
+.cmp__row--head { font: 400 12px/18px var(--f-pixel); color: var(--c-ink-3); }
+.cmp__k { font: 400 12px/24px var(--f-pixel); color: var(--c-ink-3); }
+.cmp__v small { display: block; font-size: 12px; line-height: 18px; color: var(--c-ink-3); }
+
+.ratio { display: flex; height: 24px; border: 1px solid var(--c-line-strong); }
+.ratio__a { flex: 85; }
+.ratio__b { flex: 12; background: var(--c-ink); }
+.ratio__c { flex: 3; background: var(--c-accent); box-shadow: var(--glow-accent); }
+.legend { display: flex; flex-wrap: wrap; gap: var(--s-4); margin-top: var(--s-1); font: 400 12px/18px var(--f-pixel); color: var(--c-ink-3); }
+.legend span::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 6px; vertical-align: middle; background: var(--k); outline: 1px solid var(--c-line-strong); }
+
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: var(--s-2); }
+.swatch { display: grid; align-content: start; padding: 0; text-align: left; font: inherit; color: var(--c-ink); background: none; border: 1px solid var(--c-line); cursor: pointer; transition: var(--tr-hover); }
+.swatch:hover { border-color: var(--c-ink-3); }
+.swatch__chip { display: grid; grid-template-columns: 1fr 1fr; height: 72px; border-bottom: 1px solid var(--c-line); }
+.swatch__chip span:first-child { background: var(--d); }
+.swatch__chip span:last-child { background: var(--l); }
+.swatch__name { padding: var(--s-1) var(--s-2) 0; font: 400 12px/18px var(--f-pixel); color: var(--c-ink-2); }
+.swatch__hex { padding: 0 var(--s-2); font: 500 14px/24px var(--f-body); }
+.swatch__hex span { display: block; color: var(--c-ink-3); }
+[data-theme="dark"] .swatch__hex .is-d, [data-theme="light"] .swatch__hex .is-l { color: var(--c-ink); }
+.swatch__use { padding: var(--s-1) var(--s-2) var(--s-2); font-size: 12px; line-height: 18px; color: var(--c-ink-3); }
+
+.fonts { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-2); }
+.font-card { padding: var(--s-3); border: 1px solid var(--c-line); background: var(--c-panel); }
+.font-card__sample { margin: 0 0 var(--s-3); font-size: 48px; line-height: 60px; color: var(--c-ink); }
+.font-card__sample--body { font: 400 44px/60px var(--f-body); }
+.font-card__name { margin: 0; font: 400 12px/18px var(--f-pixel); color: var(--c-accent-ink); }
+.font-card__use { margin: var(--s-1) 0 0; font-size: 14px; line-height: 24px; color: var(--c-ink-2); }
+
+.spec { display: grid; grid-template-columns: 168px 1fr; gap: var(--s-4); align-items: baseline; padding: var(--s-3) 0; border-top: 1px solid var(--c-line); }
+.spec__meta { font: 400 12px/18px var(--f-pixel); color: var(--c-ink-3); }
+.spec__sample { min-width: 0; overflow-wrap: anywhere; font-synthesis: none; }
+.s96 { font: 400 96px/108px var(--f-display); }
+.s48 { font: 400 48px/60px var(--f-display); }
+.s36 { font: 400 36px/48px var(--f-display); }
+.s24 { font: 400 24px/36px var(--f-display); }
+.s12 { font: 400 12px/18px var(--f-pixel); letter-spacing: 2px; }
+.b16 { font: 400 16px/28px var(--f-body); max-width: 36em; }
+.b14 { font: 400 14px/24px var(--f-body); color: var(--c-ink-2); }
+
+.crisp { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2); margin-top: var(--s-4); }
+.crisp__item { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-2); padding: var(--s-3); border: 1px solid var(--c-line); }
+.crisp__px { font-family: var(--f-pixel); font-synthesis: none; line-height: 36px; }
+
+.space-row { display: grid; grid-template-columns: 60px 48px 1fr; align-items: center; gap: var(--s-2); padding: 3px 0; }
+.space-row__name { font: 400 12px/18px var(--f-pixel); color: var(--c-ink-3); }
+.space-row__val { font-size: 14px; line-height: 24px; }
+.space-row__bar { width: var(--w); height: 12px; background: var(--c-accent-wash); border: 1px solid var(--c-accent-ink); }
+.shapes { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-2); margin-top: var(--s-5); }
+.shape { display: flex; align-items: flex-end; height: 108px; padding: var(--s-2); background: var(--c-panel); font: 400 12px/18px var(--f-pixel); color: var(--c-ink-2); }
+.shape--r { border: 1px solid var(--c-line-strong); }
+.shape--1 { border: 1px solid var(--c-accent-ink); }
+.shape--2 { border: 2px solid var(--c-accent-ink); }
+
+.crt-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-2); }
+.crt-tile { display: flex; flex-direction: column; gap: var(--s-2); padding: var(--s-3); border: 1px solid var(--c-line); background: var(--c-panel); }
+.crt-tile__demo { display: grid; place-items: center; min-height: 132px; border: 1px solid var(--c-line); }
+.crt-tile__demo--scan { background: var(--scan-panel), var(--c-accent-wash); }
+.crt-tile__demo--vig { background: var(--scan-screen), var(--vignette), var(--c-raised); }
+.crt-tile__name { margin: 0; font: 400 12px/18px var(--f-pixel); color: var(--c-accent-ink); }
+.crt-tile__rule { margin: 0; font-size: 14px; line-height: 24px; color: var(--c-ink-2); }
+.glow-demo { font-size: 36px; line-height: 48px; color: var(--c-accent-ink); text-shadow: var(--glow-accent); }
+
+.demos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--s-6); }
+.demo { padding: var(--s-4) 0 var(--s-5); border-top: 1px solid var(--c-line); min-width: 0; }
+.demo--wide { grid-column: 1 / -1; }
+.demo__name { margin: 0 0 var(--s-3); font: 400 12px/18px var(--f-pixel); color: var(--c-ink-3); }
+.demo__row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+.demo__stack { display: grid; gap: var(--s-4); }
+.demo__rule { margin: var(--s-3) 0 0; max-width: 42em; font-size: 14px; line-height: 24px; color: var(--c-ink-2); }
+.log-demo { height: 216px; overflow: auto; }
+
+.foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s-2); margin-top: var(--s-8); padding-top: var(--s-3); border-top: 1px solid var(--c-line); font: 400 12px/18px var(--f-pixel); color: var(--c-ink-3); }
+.foot a { color: var(--c-ink-2); }
+
+@media (max-width: 760px) {
+  .page { padding: 0 var(--s-2) var(--s-6); }
+  .hero { margin-top: var(--s-2); padding: var(--s-4) var(--s-3); }
+  .hero__title, .s96 { font-size: 48px; line-height: 60px; }
+  .hero__sub { font-size: 24px; line-height: 36px; }
+  .sec { padding-top: var(--s-7); }
+  .themes, .fonts, .crt-tiles, .shapes, .demos, .crisp { grid-template-columns: 1fr; }
+  .cmp__row { grid-template-columns: 1fr 1fr; gap: var(--s-1) var(--s-3); }
+  .cmp__k { grid-column: 1 / -1; }
+  .cmp__row--head .cmp__k { display: none; }
+  .spec { grid-template-columns: 1fr; gap: var(--s-1); }
+  .layer { grid-template-columns: 1fr; }
+  .nav__path { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .cursor, .boot, [data-theme="light"] .boot { animation: none; }
+  .btn, .link, .term__copy, .nav__link, .seg__opt, .swatch { transition: none; }
+}
+</style>
+</head>
+<body>
+<main class="page">
+
+  <header class="hero boot">
+    <div class="hero__bar">
+      <span>phosphor v1.2</span>
+      <div class="seg" role="group" aria-label="主题">
+        <button class="seg__opt" type="button" data-theme-set="auto">跟随系统</button>
+        <button class="seg__opt" type="button" data-theme-set="dark">暗色</button>
+        <button class="seg__opt" type="button" data-theme-set="light">亮色</button>
+      </div>
+    </div>
+    <h1 class="hero__title ty-display">磷光<span class="cursor" aria-hidden="true"></span></h1>
+    <p class="hero__sub ty-display">终端 / CRT 风设计体系</p>
+    <p class="hero__lead">屏幕做底，绿色是信号，像素字只用来显示。两套主题：暗色是老显像管，亮色是老液晶屏。这份文档给新站点定基调：配色、字体、网格、质感，外加八个基础组件。</p>
+    <div class="hero__actions">
+      <a class="btn btn--primary" href="#components">查看组件</a>
+      <button class="btn" id="crt-toggle" type="button" aria-pressed="true">关闭屏幕纹理</button>
+    </div>
+  </header>
+
+  <!-- 主题 -->
+  <section class="sec" id="themes">
+    <h2 class="sec__title ty-display"><span class="sec__prompt">&gt;</span> 主题</h2>
+    <p class="sec__desc">两套主题共用同一组变量，只换色值。默认跟随系统，手动选过就记住。任意元素加上 data-theme="dark" 或 "light"，这一块就单独用另一套，下面两块屏幕就是这么做的。</p>
+    <div class="sec__body">
+      <div class="themes">
+        <div class="screen" data-theme="dark">
+          <div class="screen__bar"><span>暗色：显像管</span><span>data-theme="dark"</span></div>
+          <div class="screen__body">
+            <p class="screen__title ty-display">部署完成<span class="cursor" aria-hidden="true"></span></p>
+            <p class="screen__text">3 个页面已上线，用时 12 秒。</p>
+            <div class="screen__row">
+              <button class="btn btn--primary" type="button">打开站点</button>
+              <span class="tag tag--accent">生产环境</span>
+              <span class="status status--ok">运行中</span>
+            </div>
+            <div class="term"><pre class="term__body"><span class="t-p">$</span> <span class="t-cmd">phosphor deploy</span>
+<span class="t-ok">✓ 完成</span> <span class="t-warn">! 1 个警告</span></pre></div>
+          </div>
+        </div>
+        <div class="screen" data-theme="light">
+          <div class="screen__bar"><span>亮色：液晶屏</span><span>data-theme="light"</span></div>
+          <div class="screen__body">
+            <p class="screen__title ty-display">部署完成<span class="cursor" aria-hidden="true"></span></p>
+            <p class="screen__text">3 个页面已上线，用时 12 秒。</p>
+            <div class="screen__row">
+              <button class="btn btn--primary" type="button">打开站点</button>
+              <span class="tag tag--accent">生产环境</span>
+              <span class="status status--ok">运行中</span>
+            </div>
+            <div class="term"><pre class="term__body"><span class="t-p">$</span> <span class="t-cmd">phosphor deploy</span>
+<span class="t-ok">✓ 完成</span> <span class="t-warn">! 1 个警告</span></pre></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cmp">
+        <div class="cmp__row cmp__row--head"><span class="cmp__k">换了什么</span><span>暗色</span><span>亮色</span></div>
+        <div class="cmp__row"><span class="cmp__k">底色</span><span class="cmp__v">近黑 #0A0B09</span><span class="cmp__v">暖灰绿 #D2D7C3</span></div>
+        <div class="cmp__row"><span class="cmp__k">文字</span><span class="cmp__v">磷光白 #EAF2DF</span><span class="cmp__v">液晶深墨 #1E2416</span></div>
+        <div class="cmp__row"><span class="cmp__k">绿色文字和线条</span><span class="cmp__v">青柠绿 #99D52A</span><span class="cmp__v">深绿 #3A5A0A<small>青柠绿在这个底色上对比度只有 1.2:1，只留着做填充</small></span></div>
+        <div class="cmp__row"><span class="cmp__k">质感</span><span class="cmp__v">扫描线、暗角、辉光</span><span class="cmp__v">淡淡的像素网格，不发光</span></div>
+        <div class="cmp__row"><span class="cmp__k">开机动画</span><span class="cmp__v">先亮一条横线，再撑满</span><span class="cmp__v">分 4 档显出来</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 配色 -->
+  <section class="sec" id="colors">
+    <h2 class="sec__title ty-display"><span class="sec__prompt">&gt;</span> 配色</h2>
+    <p class="sec__desc">色块左半是暗色主题，右半是亮色主题。按面积分配：屏幕 85%，文字 12%，信号色不超过 3%。换主题时色值会变，所以写代码只用变量，点色块就能复制变量名。</p>
+    <div class="sec__body">
+      <div class="ratio" aria-hidden="true"><span class="ratio__a"></span><span class="ratio__b"></span><span class="ratio__c"></span></div>
+      <div class="legend"><span style="--k: var(--c-screen)">屏幕 85%</span><span style="--k: var(--c-ink)">文字 12%</span><span style="--k: var(--c-accent)">信号 3%</span></div>
+
+      <h3 class="sub">屏幕</h3>
+      <div class="swatches">
+        <button class="swatch" type="button" data-var="--c-screen" style="--d:#0A0B09; --l:#D2D7C3"><span class="swatch__chip"><span></span><span></span></span><span class="swatch__name">--c-screen</span><span class="swatch__hex"><span class="is-d">暗 #0A0B09</span><span class="is-l">亮 #D2D7C3</span></span><span class="swatch__use">页面底色</span></button>
+        <button class="swatch" type="button" data-var="--c-panel" style="--d:#121410; --l:#DCE0CE"><span class="swatch__chip"><span></span><span></span></span><span class="swatch__name">--c-panel</span><span class="swatch__hex"><span class="is-d">暗 #121410</span><span class="is-l">亮 #DCE0CE</span></span><span class="swatch__use">面板、卡片、代码块</span></button>
+        <button class="swatch" type="button" data-var="--c-raised" style="--d:#1A1D16; --l:#E4E7D8"><span class="swatch__chip"><span></span><span></span></span><span class="swatch__name">--c-raised</span><span class="swatch__hex"><span class="is-d">暗 #1A1D16</span><span class="is-l">亮 #E4E7D8</span></span><span class="swatch__use">下拉、弹层</span></button>
+        <button class="swatch" type="button" data-var="--c-line" style="--d:#2A2F24; --l:#AEB59D"><span class="swatch__chip"><span></span><span></span></span><span class="swatch__name">--c-line</span><span class="swatch__hex"><span class="is-d">暗 #2A2F24</span><span class="is-l">亮 #AEB59D</span></span><span class="swatch__use">默认边框、分割线</span></button>
+        <button class="swatch" type="button" data-var="--c-line-strong" style="--d:#454C3B; --l:#8A927A"><span class="swatch__chip"><span></span><span></span></span><span class="swatch__name">--c-line-strong</span><span class="swatch__hex"><span class="is-d">暗 #454C3B</span><span class="is-l">亮 #8A927A</span></span><span class="swatch__use">输入框、次级边框</span></button>
+      </div>
+
+      <h3 class="sub">文字</h3>
+      <div class="swatches">
+        <button class="swatch" type="button" data-var="--c-ink" style="--d:#EAF2DF; --l:#1E2416"><span class="swatch__chip"><span></span><span></span></span><span class="swatch__name">--c-ink</span><span class="swatch__hex"><span class="is-d">暗 #EAF2DF</span><span class="is-l">亮 #1E2416</span></span><span class="swatch__use">标题、正文</span></button>
+        <button class="swatch" type="button" data-var="--c-ink-2" style="--d:#A4AD97; --l:#3A4230"><span class="swatch__chip"><span></span><span></span></span><span class="swatch__name">--c-ink-2</span><span class="swatch__hex"><span class="is-d">暗 #A4AD97</span><span class="is-l">亮 #3A4230</span></span><span class="swatch__use">次要说明</span></button>
+        <button class="swatch" type="button" data-var="--c-ink-3" style="--d:#7A8270; --l:#555D45"><span class="swatch__chip"><span></span><span></span></span><span class="swatch__name">--c-ink-3</span><span class="swatch__hex"><span class="is-d">暗 #7A8270</span><span class="is-l">亮 #555D45</span></span><span class="swatch__use">注释、禁用，两套都在 4.5:1 以上</span></button>
+      </div>
+
+      <h3 class="sub">信号</h3>
+      <div class="swatches">
+        <button class="swatch" type="button" data-var="--c-accent" style="--d:#99D52A; --l:#99D52A"><span class="swatch__chip"><span></span><span></span></span><span class="swatch__name">--c-accent</span><span class="swatch__hex"><span class="is-d">暗 #99D52A</span><span class="is-l">亮 #99D52A</span></span><span class="swatch__use">填充：主按钮、选中、当前导航</span></button>
+        <button class="swatch" type="button" data-var="--c-accent-ink" style="--d:#99D52A; --l:#3A5A0A"><span class="swatch__chip"><span></span><span></span></span><span class="swatch__name">--c-accent-ink</span><span class="swatch__hex"><span class="is-d">暗 #99D52A</span><span class="is-l">亮 #3A5A0A</span></span><span class="swatch__use">文字和线条：描边按钮、提示符、焦点框</span></button>
+        <button class="swatch" type="button" data-var="--c-on-accent" style="--d:#0A0B09; --l:#1E2416"><span class="swatch__chip"><span></span><span></span></span><span class="swatch__name">--c-on-accent</span><span class="swatch__hex"><span class="is-d">暗 #0A0B09</span><span class="is-l">亮 #1E2416</span></span><span class="swatch__use">亮绿填充上的文字</span></button>
+        <button class="swatch" type="button" data-var="--c-phosphor" style="--d:#80EE64; --l:#28621A"><span class="swatch__chip"><span></span><span></span></span><span class="swatch__name">--c-phosphor</span><span class="swatch__hex"><span class="is-d">暗 #80EE64</span><span class="is-l">亮 #28621A</span></span><span class="swatch__use">成功、终端输出</span></button>
+        <button class="swatch" type="button" data-var="--c-mint" style="--d:#BFF9B4; --l:#2C6650"><span class="swatch__chip"><span></span><span></span></span><span class="swatch__name">--c-mint</span><span class="swatch__hex"><span class="is-d">暗 #BFF9B4</span><span class="is-l">亮 #2C6650</span></span><span class="swatch__use">代码字符串</span></button>
+        <button class="swatch" type="button" data-var="--c-amber" style="--d:#F5A524; --l:#7A4F00"><span class="swatch__chip"><span></span><span></span></span><span class="swatch__name">--c-amber</span><span class="swatch__hex"><span class="is-d">暗 #F5A524</span><span class="is-l">亮 #7A4F00</span></span><span class="swatch__use">警告</span></button>
+        <button class="swatch" type="button" data-var="--c-red" style="--d:#FF6B57; --l:#9E2C1A"><span class="swatch__chip"><span></span><span></span></span><span class="swatch__name">--c-red</span><span class="swatch__hex"><span class="is-d">暗 #FF6B57</span><span class="is-l">亮 #9E2C1A</span></span><span class="swatch__use">错误</span></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 字体 -->
+  <section class="sec" id="type">
+    <h2 class="sec__title ty-display"><span class="sec__prompt">&gt;</span> 字体</h2>
+    <p class="sec__desc">三款字体，各管一件事。像素字只用 12 的倍数，其他字号像素会糊。中文长段落不用像素字，读起来太累。</p>
+    <div class="sec__body">
+      <div class="fonts">
+        <div class="font-card">
+          <p class="font-card__sample ty-display">Aa 字</p>
+          <p class="font-card__name">显示字 --f-display</p>
+          <p class="font-card__use">英文 Geist Pixel，中文自动回退到缝合像素。用于标题、编号、大数字。</p>
+        </div>
+        <div class="font-card">
+          <p class="font-card__sample ty-pixel">Aa 字</p>
+          <p class="font-card__name">像素标签 --f-pixel</p>
+          <p class="font-card__use">中英文都用缝合像素 12px。用于标签、状态、终端标题栏。</p>
+        </div>
+        <div class="font-card">
+          <p class="font-card__sample font-card__sample--body">Aa 字</p>
+          <p class="font-card__name">正文 --f-body</p>
+          <p class="font-card__use">英文 Geist Mono，中文用系统黑体。用于正文、按钮、输入框。</p>
+        </div>
+      </div>
+
+      <h3 class="sub">字号</h3>
+      <div class="spec"><div class="spec__meta">96 / 108<br>首屏大字</div><div class="spec__sample s96">磷光 Phos</div></div>
+      <div class="spec"><div class="spec__meta">48 / 60<br>页面标题</div><div class="spec__sample s48">给开发者的终端界面</div></div>
+      <div class="spec"><div class="spec__meta">36 / 48<br>区块标题</div><div class="spec__sample s36">部署记录 Deploy log</div></div>
+      <div class="spec"><div class="spec__meta">24 / 36<br>卡片标题</div><div class="spec__sample s24">Schema.org 结构化数据</div></div>
+      <div class="spec"><div class="spec__meta">12 / 18<br>像素标签</div><div class="spec__sample s12">数据层 DATA LAYER 03</div></div>
+      <div class="spec"><div class="spec__meta">16 / 28<br>正文</div><p class="spec__sample b16" style="margin:0">正文用 Geist Mono 配系统黑体。English words stay monospaced, 中文保持清楚好读，一行不超过 36 个汉字。</p></div>
+      <div class="spec"><div class="spec__meta">14 / 24<br>界面文字</div><p class="spec__sample b14" style="margin:0">按钮、导航、说明文字、表单提示。</p></div>
+
+      <div class="crisp">
+        <div class="crisp__item"><span class="crisp__px" style="font-size:24px">像素字 24</span><span class="status status--ok">12 × 2，清晰</span></div>
+        <div class="crisp__item"><span class="crisp__px" style="font-size:26px">像素字 26</span><span class="status status--err">不是 12 的倍数，发糊</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 网格 -->
+  <section class="sec" id="grid">
+    <h2 class="sec__title ty-display"><span class="sec__prompt">&gt;</span> 网格</h2>
+    <p class="sec__desc">间距全部是 6 的倍数，和 12px 像素字对得上。没有圆角，也不用投影，层级靠边框粗细和底纹来分。</p>
+    <div class="sec__body">
+      <div class="space-row"><span class="space-row__name">--s-1</span><span class="space-row__val">6</span><span class="space-row__bar" style="--w:6px"></span></div>
+      <div class="space-row"><span class="space-row__name">--s-2</span><span class="space-row__val">12</span><span class="space-row__bar" style="--w:12px"></span></div>
+      <div class="space-row"><span class="space-row__name">--s-3</span><span class="space-row__val">18</span><span class="space-row__bar" style="--w:18px"></span></div>
+      <div class="space-row"><span class="space-row__name">--s-4</span><span class="space-row__val">24</span><span class="space-row__bar" style="--w:24px"></span></div>
+      <div class="space-row"><span class="space-row__name">--s-5</span><span class="space-row__val">36</span><span class="space-row__bar" style="--w:36px"></span></div>
+      <div class="space-row"><span class="space-row__name">--s-6</span><span class="space-row__val">48</span><span class="space-row__bar" style="--w:48px"></span></div>
+      <div class="space-row"><span class="space-row__name">--s-7</span><span class="space-row__val">72</span><span class="space-row__bar" style="--w:72px"></span></div>
+      <div class="space-row"><span class="space-row__name">--s-8</span><span class="space-row__val">96</span><span class="space-row__bar" style="--w:96px"></span></div>
+
+      <div class="shapes">
+        <div class="shape shape--r">圆角 0，全部直角</div>
+        <div class="shape shape--1">默认和激活 1px</div>
+        <div class="shape shape--2">当前项 2px</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 质感 -->
+  <section class="sec" id="crt">
+    <h2 class="sec__title ty-display"><span class="sec__prompt">&gt;</span> 质感</h2>
+    <p class="sec__desc">暗色主题靠扫描线、暗角、辉光出味道；亮色主题换成液晶屏的像素网格，不发光。都要轻，只加气氛，不能拉低文字对比度。</p>
+    <div class="sec__body crt-tiles">
+      <div class="crt-tile">
+        <div class="crt-tile__demo crt-tile__demo--scan"><span class="ty-pixel" style="color:var(--c-ink-2)">--scan-panel</span></div>
+        <p class="crt-tile__name">面板底纹</p>
+        <p class="crt-tile__rule">间距 3px 的细横线，只铺在激活面板和代码块里。</p>
+      </div>
+      <div class="crt-tile">
+        <div class="crt-tile__demo crt-tile__demo--vig"><span class="ty-pixel" style="color:var(--c-ink-2)">--scan-screen</span></div>
+        <p class="crt-tile__name">全屏纹理</p>
+        <p class="crt-tile__rule">暗色是扫描线加暗角，亮色是像素网格。首屏按钮可以关掉，代码里给 &lt;html&gt; 加 .crt-off 也行。</p>
+      </div>
+      <div class="crt-tile">
+        <div class="crt-tile__demo"><span class="ty-display glow-demo">就绪<span class="cursor" aria-hidden="true"></span></span></div>
+        <p class="crt-tile__name">磷光辉光</p>
+        <p class="crt-tile__rule">只给光标和主按钮用，亮色主题里自动去掉。发光的东西越少，每一个就越显眼。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 组件 -->
+  <section class="sec" id="components">
+    <h2 class="sec__title ty-display"><span class="sec__prompt">&gt;</span> 组件</h2>
+    <p class="sec__desc">新页面先用这八个组件拼。交互反馈只有一种：反显，也就是前景色和背景色互换，统一用 150ms 过渡。</p>
+    <div class="sec__body demos">
+
+      <div class="demo">
+        <h3 class="demo__name">按钮</h3>
+        <div class="demo__row">
+          <button class="btn btn--primary" type="button">部署站点</button>
+          <button class="btn" type="button">查看文档</button>
+          <button class="btn" type="button" disabled>部署中</button>
+        </div>
+        <p class="demo__rule">一屏只放一个主按钮。悬停时前景色和背景色互换，用 150ms 过渡。</p>
+      </div>
+
+      <div class="demo">
+        <h3 class="demo__name">标签和状态</h3>
+        <div class="demo__row">
+          <span class="tag tag--accent">数据层</span>
+          <span class="tag">语境层</span>
+          <span class="tag">v1.2</span>
+        </div>
+        <div class="demo__row" style="margin-top:var(--s-2)">
+          <span class="status status--ok">运行中</span>
+          <span class="status status--warn">待处理</span>
+          <span class="status status--err">构建失败</span>
+        </div>
+        <p class="demo__rule">状态色只表示状态，不拿来做装饰。</p>
+      </div>
+
+      <div class="demo demo--wide">
+        <h3 class="demo__name">层级面板</h3>
+        <div>
+          <div class="layer">
+            <span class="layer__no">04</span>
+            <div class="layer__main"><p class="layer__title">视觉层</p><p class="layer__desc">触感粗野风、Grid、Flexbox</p></div>
+            <span class="tag">表现层</span>
+          </div>
+          <span class="layer-arrow" aria-hidden="true">↑</span>
+          <div class="layer is-active">
+            <span class="layer__no">03</span>
+            <div class="layer__main"><p class="layer__title">Schema.org 结构化数据</p><p class="layer__desc">用 JSON-LD 明确声明页面里的实体</p></div>
+            <span class="tag tag--accent">数据层</span>
+          </div>
+          <span class="layer-arrow" aria-hidden="true">↑</span>
+          <div class="layer is-active">
+            <span class="layer__no">02</span>
+            <div class="layer__main"><p class="layer__title">ARIA 无障碍标注</p><p class="layer__desc">同一套标注，读屏软件和 AI 都能读懂</p></div>
+            <span class="tag tag--accent">语境层</span>
+          </div>
+          <span class="layer-arrow" aria-hidden="true">↑</span>
+          <div class="layer is-current" aria-current="step">
+            <span class="layer__no">01</span>
+            <div class="layer__main"><p class="layer__title">语义化 HTML5</p><p class="layer__desc">先把结构写对，样式最后再加</p></div>
+            <span class="tag tag--accent">结构层</span>
+          </div>
+        </div>
+        <p class="demo__rule">三种状态：默认是灰色细线；激活是绿色细线加底纹；当前项边框加粗到 2px。编号从下往上数，只在内容真有先后顺序时使用。</p>
+      </div>
+
+      <div class="demo">
+        <h3 class="demo__name">终端代码块</h3>
+        <div class="term">
+          <div class="term__bar"><span>~/fonts</span><button class="term__copy" type="button" data-copy="term-1">复制</button></div>
+<pre class="term__body" id="term-1"><span class="t-p">$</span> <span class="t-cmd">git clone https://github.com/TakWolf/fusion-pixel-font.git</span>
+<span class="t-com">正克隆到 'fusion-pixel-font'...</span>
+<span class="t-ok">✓ 完成</span>
+<span class="t-warn">! 10px 版本有来源不明的字形，商用请用 12px</span></pre>
+        </div>
+        <p class="demo__rule">提示符用主色，命令用主文字色，输出用灰，结果用状态色。代码不自动换行。</p>
+      </div>
+
+      <div class="demo">
+        <h3 class="demo__name">输入框</h3>
+        <div class="demo__stack">
+          <label class="field">
+            <span class="field__label">项目名</span>
+            <span class="field__box"><span class="field__prompt" aria-hidden="true">&gt;</span><input class="field__input" type="text" placeholder="my-site"></span>
+            <span class="field__msg">只能用小写字母、数字和短横线。</span>
+          </label>
+          <label class="field field--error">
+            <span class="field__label">部署域名</span>
+            <span class="field__box"><span class="field__prompt" aria-hidden="true">&gt;</span><input class="field__input" type="text" value="" aria-invalid="true"></span>
+            <span class="field__msg">域名不能为空，请填写例如 example.com。</span>
+          </label>
+        </div>
+        <p class="demo__rule">左边放提示符，光标用主色。报错时直接说哪里错了、怎么改。</p>
+      </div>
+
+      <div class="demo demo--wide">
+        <h3 class="demo__name">导航</h3>
+        <nav class="nav" aria-label="示例导航">
+          <span class="nav__brand">磷光</span>
+          <a class="nav__link is-current" href="#components" aria-current="page">首页</a>
+          <a class="nav__link" href="#type">文档</a>
+          <a class="nav__link" href="#components">组件</a>
+          <a class="nav__link" href="#rules">更新日志</a>
+          <span class="nav__path">~/docs/getting-started</span>
+        </nav>
+        <p class="demo__rule">当前页用绿色填充，悬停用文字色反显。右侧的路径告诉用户现在在哪。</p>
+      </div>
+
+      <div class="demo demo--wide">
+        <h3 class="demo__name">主题切换</h3>
+        <div class="seg" role="group" aria-label="主题">
+          <button class="seg__opt" type="button" data-theme-set="auto">跟随系统</button>
+          <button class="seg__opt" type="button" data-theme-set="dark">暗色</button>
+          <button class="seg__opt" type="button" data-theme-set="light">亮色</button>
+        </div>
+        <p class="demo__rule">和首屏那个是同一个组件，点哪个都同步。按钮加上 data-theme-set 就能用，不用另写脚本。默认选中"跟随系统"。</p>
+      </div>
+
+      <div class="demo demo--wide">
+        <h3 class="demo__name">滚动条</h3>
+        <div class="term">
+          <div class="term__bar"><span>deploy.log</span><span>24 行</span></div>
+<pre class="term__body log-demo" tabindex="0" aria-label="部署日志示例"><span class="t-com">[09:41:02]</span> 开始部署 phosphor-docs
+<span class="t-com">[09:41:02]</span> 读取配置 phosphor.config.json
+<span class="t-com">[09:41:03]</span> 安装依赖，共 142 个
+<span class="t-com">[09:41:07]</span> <span class="t-ok">✓ 依赖安装完成</span>
+<span class="t-com">[09:41:07]</span> 构建页面 01/12 index.html
+<span class="t-com">[09:41:08]</span> 构建页面 02/12 docs/getting-started.html
+<span class="t-com">[09:41:08]</span> 构建页面 03/12 docs/colors.html
+<span class="t-com">[09:41:09]</span> 构建页面 04/12 docs/type.html
+<span class="t-com">[09:41:09]</span> 构建页面 05/12 docs/grid.html
+<span class="t-com">[09:41:10]</span> 构建页面 06/12 docs/texture.html
+<span class="t-com">[09:41:11]</span> 构建页面 07/12 components/button.html
+<span class="t-com">[09:41:11]</span> 构建页面 08/12 components/tag.html
+<span class="t-com">[09:41:12]</span> 构建页面 09/12 components/layer.html
+<span class="t-com">[09:41:12]</span> 构建页面 10/12 components/term.html
+<span class="t-com">[09:41:13]</span> 构建页面 11/12 components/field.html
+<span class="t-com">[09:41:14]</span> 构建页面 12/12 components/nav.html
+<span class="t-com">[09:41:14]</span> <span class="t-ok">✓ 12 个页面构建完成</span>
+<span class="t-com">[09:41:15]</span> <span class="t-warn">! 字体文件 fusion-pixel-12px-monospaced-zh_hans.woff2 超过 1 MB，建议用 cn-font-split 切分后按需加载，首屏只加载用到的字</span>
+<span class="t-com">[09:41:15]</span> 压缩图片，共 36 张
+<span class="t-com">[09:41:16]</span> <span class="t-ok">✓ 体积减少 2.4 MB</span>
+<span class="t-com">[09:41:16]</span> 上传到 CDN
+<span class="t-com">[09:41:18]</span> 刷新缓存
+<span class="t-com">[09:41:19]</span> <span class="t-ok">✓ 部署完成，用时 17 秒</span>
+<span class="t-p">$</span> <span class="cursor" aria-hidden="true"></span></pre>
+        </div>
+        <p class="demo__rule">方块滑块，左边一条细轨道线，没有圆角。悬停时滑块变亮，拖动时变成主色。上下、左右都能滚，页面本身的滚动条也是这个样式。Chrome、Edge、Safari 完整生效；Firefox 只能改颜色和粗细，形状跟随系统。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 规则 -->
+  <section class="sec" id="rules">
+    <h2 class="sec__title ty-display"><span class="sec__prompt">&gt;</span> 规则</h2>
+    <p class="sec__desc">拿不准的时候，对照这份清单。</p>
+    <div class="sec__body">
+      <div class="term">
+        <div class="term__bar"><span>rules.diff</span><span>+6 −6</span></div>
+<pre class="term__body"><span class="t-ok">+ 大面积留给屏幕底色，亮色只放在按钮、光标和当前项上</span>
+<span class="t-ok">+ 像素字只用于标题、标签和编号，字号用 12 的倍数</span>
+<span class="t-ok">+ 悬停和选中用反显，颜色过渡统一 150ms</span>
+<span class="t-ok">+ 中文正文用系统黑体，英文正文用 Geist Mono</span>
+<span class="t-ok">+ 编号只用在真有先后顺序的内容上</span>
+<span class="t-ok">+ 写代码只用变量，不直接写色值，换主题时色值会变</span>
+<span class="t-err">- 不用圆角、投影和装饰性渐变</span>
+<span class="t-err">- 同一屏不出现两种以上信号色</span>
+<span class="t-err">- 不给每个区块加入场动画，开机动画全站只用一次</span>
+<span class="t-err">- 纹理不能盖住正文，影响阅读</span>
+<span class="t-err">- 不用纯白 #FFFFFF 和纯黑 #000000</span>
+<span class="t-err">- 绿色文字和线条不用 --c-accent，要用 --c-accent-ink</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <span>字体：Geist Pixel、Geist Mono（Vercel，OFL-1.1）；缝合像素（TakWolf，OFL-1.1，CDN 由 ZeoSeven 提供）</span>
+    <span>配色参考 <a href="https://www.morphllm.com/">morphllm.com</a>　磷光 v1.2　2026.09</span>
+  </footer>
+</main>
+
+<script>
+  var root = document.documentElement;
+
+  // 开机动画播一次就移除，切换主题时不会重播
+  var boot = document.querySelector('.boot');
+  if (boot) boot.addEventListener('animationend', function () { boot.classList.remove('boot'); }, { once: true });
+
+  // 屏幕纹理开关
+  var crtBtn = document.getElementById('crt-toggle');
+  crtBtn.addEventListener('click', function () {
+    var off = root.classList.toggle('crt-off');
+    crtBtn.setAttribute('aria-pressed', String(!off));
+    crtBtn.textContent = off ? '打开屏幕纹理' : '关闭屏幕纹理';
+  });
+
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).then(function () { return true; }, function () { return false; });
+    }
+    return Promise.resolve(false);
+  }
+
+  // 色块：复制变量名
+  document.querySelectorAll('.swatch').forEach(function (btn) {
+    var name = btn.querySelector('.swatch__name');
+    var v = btn.dataset.var;
+    btn.addEventListener('click', function () {
+      copyText('var(' + v + ')').then(function (ok) {
+        name.textContent = ok ? '已复制 var(' + v + ')' : '复制失败，请手动复制';
+        clearTimeout(btn._t);
+        btn._t = setTimeout(function () { name.textContent = v; }, 1400);
+      });
+    });
+  });
+
+  // 代码块：复制内容
+  document.querySelectorAll('[data-copy]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var src = document.getElementById(btn.dataset.copy);
+      copyText(src.innerText).then(function (ok) {
+        btn.textContent = ok ? '已复制' : '复制失败';
+        setTimeout(function () { btn.textContent = '复制'; }, 1400);
+      });
+    });
+  });
+</script>
+</body>
+</html>

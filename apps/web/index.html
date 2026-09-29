@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ease-Deploy</title>
+<meta name="description" content="Ease-Deploy：在浏览器里完成构建与发布。">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+
+<!-- ① 主题脚本：必须放在最前面，不要加 async / defer，否则打开页面会闪一下 -->
+<script src="/phosphor-theme.js"></script>
+
+<!-- ② 字体：正式上线前，建议把缝合像素下载下来切分后自己托管 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Pixel&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fontsapi.zeoseven.com/570/main/result.css">
+</head>
+<body>
+<div id="root"></div>
+<script type="module" src="/src/main.tsx"></script>
+</body>
+</html>

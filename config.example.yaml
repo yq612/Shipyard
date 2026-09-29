@@ -1,0 +1,103 @@
+# Ease-Deploy 配置示例。复制到 data/config.yaml（或用 CONFIG_PATH 指定路径）后按需修改。
+# 服务运行时会热加载：每次发起发布前重新读取并校验，改环境、改白名单都不用重启。
+
+server:
+  port: 8080
+  # 飞书卡片里「查看详情」的链接前缀；不填则卡片不带链接
+  # publicUrl: https://deploy.example.internal
+  maxConcurrent: 3          # 同时执行的环境数上限（install + build 很吃 CPU / 内存）
+  logRetentionDays: 30      # 发布记录和日志保留天数
+
+access:
+  allowIps:                 # 允许执行（发起 / 取消 / 重试）的 IP，支持 CIDR
+    - 127.0.0.1
+    - ::1
+    # - 203.0.113.10        # 示例：办公室出口 IP
+    # - 10.8.0.0/16         # 示例：VPN 网段
+  protectReads: false       # true：查看类接口也要求在白名单内
+  trustProxy: false         # 服务前面有 nginx 等反向代理时设为 true
+  proxyIps: [127.0.0.1, ::1] # 只信任这些地址转发来的 X-Forwarded-For
+  # 允许的来源（Origin / Host）。留空 = 只允许同源访问，任何 Host 都行（适合开发或直接用 IP 访问）
+  # 上线时务必填写对外地址，防止 DNS 重绑定
+  allowedOrigins: []
+  #  - https://deploy.example.internal
+
+ssh:
+  user: root
+  port: 22
+  privateKeyPath: ssh/deploy.pem   # 相对路径以本配置文件所在目录为准；权限请设为 0600
+  remotePathTemplate: "/home/topup-web/{server}/dist"
+  keepPrevious: true        # 替换时把旧版本保留为 dist.prev，方便手工回滚
+
+build:
+  install: "bun install"
+  build: "bun run build"
+  dist: "dist"
+
+repos:
+  out: "https://codeup.aliyun.com/667a81f4fd3acd0ce9015eca/topupasean-out/topupasean-game-website.git"
+  lab: "https://codeup.aliyun.com/667a81f4fd3acd0ce9015eca/AIAgent/topup-lab.git"
+  pro: "https://codeup.aliyun.com/667a81f4fd3acd0ce9015eca/topup-website-pro.git"
+
+countries:
+  - name: 巴基斯坦
+    code: PK
+    environments:
+      - { name: QuickBuy 环境, branch: PK-QuickBuy, server: quickbuypk, host: 47.245.116.22, repo: out }
+      - { name: AURATechnologies 环境, branch: PK-AURATechnologies, server: auratech, host: 8.219.100.40, repo: out }
+      - { name: Kbunique 环境, branch: PK-kbunique, server: kbunique, host: 43.106.118.236, repo: lab }
+      - { name: Sajsupply 环境, branch: PK-sajsupply, server: sajsna, host: 43.106.118.42, repo: lab }
+      - { name: Saink 环境, branch: PK-saink, server: sainkgos, host: 43.106.112.254, repo: lab }
+  - name: 印尼
+    code: ID
+    environments:
+      - { name: Jejaring 环境, branch: ID-Jejaring, server: jejaringkas, host: 47.237.201.175, repo: out }
+      - { name: Pilar 环境, branch: ID-Pilar, server: pilargp, host: 47.236.193.145, repo: out }
+      - { name: Klik 环境, branch: ID-Klik, server: klikpoint, host: 47.84.114.61, repo: out }
+      - { name: Gapuradigital 环境, branch: ID-Gapuradigital, server: gapuradigital, host: 47.236.102.124, repo: out }
+      - { name: PintuDigital 环境, branch: ID-PintuDigital, server: pintudigital, host: 47.236.115.154, repo: out }
+      # - { name: SumberTech 环境, branch: ID-SumberTech, server: sumbertech, host: 47.236.165.98, repo: out } # 暂时停用
+      - { name: Solusi Transaksi 环境, branch: id/Solusi, server: soltransnusantara, host: 8.219.130.109, repo: pro }
+      - { name: Prima Transaksi 环境, branch: id/Prima, server: primatransnusantara, host: 8.219.117.198, repo: pro }
+      - { name: Jaringan Saldo Prima 环境, branch: id/Jaringan, server: jaringansaldoprima, host: 47.245.108.255, repo: pro }
+  - name: 墨西哥
+    code: MX
+    environments:
+      - { name: ZenLix 环境, branch: MX-ZenLix, server: zenlixmx, host: 47.236.93.150, repo: out }
+      - { name: Saldito 环境, branch: MX-Saldito, server: salditomx, host: 47.236.98.114, repo: out }
+      - { name: Recara 环境, branch: MX-Recara, server: recaramx, host: 47.236.145.178, repo: out }
+  - name: 哥伦比亚
+    code: CO
+    environments:
+      - { name: Recargio 环境, branch: CO-Recargio, server: recargio, host: 47.236.15.239, repo: out }
+  - name: 阿根廷
+    code: AR
+    environments:
+      - { name: Argacarga 环境, branch: AR-Argacarga, server: argacarga, host: 47.237.201.237, repo: out }
+  - name: 巴西
+    code: BR
+    environments:
+      - { name: LigouMais 环境, branch: BR-LigouMais, server: ligoumais, host: 47.236.145.178, repo: out }
+  - name: 秘鲁
+    code: PE
+    environments:
+      - { name: Pexo 环境, branch: PE-Pexo, server: pexope, host: 8.219.141.157, repo: out }
+  - name: 智利
+    code: CL
+    environments:
+      - { name: CondorGift 环境, branch: CL-CondorGift, server: condorgift, host: 47.236.15.239, repo: out }
+  - name: 埃及
+    code: EG
+    environments:
+      - { name: Desertmart 环境, branch: eg/Desertmart, server: desertmarteg, host: 47.236.15.95, repo: pro }
+  - name: 韩国
+    code: KR
+    environments:
+      - { name: Baropin 环境, branch: kr/Baropin, server: baropin, host: 47.236.145.178, repo: pro }
+
+notify:
+  feishu:
+    # 飞书自定义机器人 webhook；留空则不推送。也可以用环境变量 FEISHU_WEBHOOK 覆盖
+    webhook: ""
+    # 仅当机器人开启「签名校验」时填写（或用环境变量 FEISHU_SECRET）
+    # secret: ""

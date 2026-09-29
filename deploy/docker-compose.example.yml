@@ -1,0 +1,17 @@
+services:
+  ease-deploy:
+    build: ..
+    image: ease-deploy:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      TZ: Asia/Shanghai
+      # FEISHU_WEBHOOK: https://open.feishu.cn/open-apis/bot/v2/hook/xxxx
+      # SHUTDOWN_TIMEOUT_MS: "600000"
+    volumes:
+      - ./data:/data                     # config.yaml、ssh/deploy.pem、ease-deploy.db、logs/
+      - bun-cache:/root/.bun/install/cache
+    stop_grace_period: 11m               # 比 SHUTDOWN_TIMEOUT_MS 稍长，让执行中的环境跑完
+volumes:
+  bun-cache:

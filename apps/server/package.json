@@ -1,0 +1,17 @@
+{
+  "name": "@shipyard/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/main.ts",
+    "start": "bun src/main.ts"
+  },
+  "dependencies": {
+    "@shipyard/shared": "workspace:*",
+    "hono": "^4.13.11",
+    "ipaddr.js": "^2.5.0",
+    "node-ssh": "^13.2.1",
+    "yaml": "^2.9.1"
+  }
+}

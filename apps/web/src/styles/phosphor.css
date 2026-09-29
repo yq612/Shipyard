@@ -1,0 +1,337 @@
+/* =========================================================
+   磷光 Phosphor 设计体系 v1.2（2026.09）
+   终端 / CRT 风格，配色参考 morphllm.com。
+   暗色主题是老显像管，亮色主题是老液晶屏（计算器、Game Boy）。
+
+   在 <head> 里按顺序引入：
+   <script src="phosphor-theme.js"></script>
+     ↑ 同步引入，不要加 async / defer，否则打开页面会先闪一下另一个主题
+   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Pixel&display=swap">
+   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&display=swap">
+   <link rel="stylesheet" href="https://fontsapi.zeoseven.com/570/main/result.css">
+   <link rel="stylesheet" href="phosphor.css">
+   缝合像素的 CDN 由 ZeoSeven 提供。正式上线时，建议下载简体中文版，
+   用 cn-font-split 切分后自己托管。
+
+   v1.2 改动：
+   - 新增滚动条样式：方块滑块、细轨道线，跟随主题换色
+
+   v1.1 改动：
+   - 新增亮色主题。默认跟随系统，手动选过会记住
+   - 任意元素加 data-theme="dark" 或 "light"，这一块就能单独用另一套主题
+   - 变量改名：--c-lime 拆成 --c-accent（填充）、--c-accent-ink（文字和线条）、--c-on-accent（填充上的文字）
+     --c-lime-wash → --c-accent-wash，--glow-lime → --glow-accent
+     --scan-light → --scan-panel，--scan-dark → --scan-screen，.tag--lime → .tag--accent
+   ========================================================= */
+
+/* ---------- 暗色主题：显像管（默认） ---------- */
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* 屏幕 */
+  --c-screen: #0A0B09;       /* 页面底色：关着的显像管，不用纯黑 */
+  --c-panel: #121410;        /* 面板、卡片、代码块 */
+  --c-raised: #1A1D16;       /* 下拉、弹层 */
+  --c-line: #2A2F24;         /* 默认边框、分割线 */
+  --c-line-strong: #454C3B;  /* 输入框、次级边框 */
+
+  /* 文字 */
+  --c-ink: #EAF2DF;          /* 磷光白：标题、正文 */
+  --c-ink-2: #A4AD97;        /* 次要说明 */
+  --c-ink-3: #7A8270;        /* 注释、禁用，对比度 4.9:1 */
+
+  /* 信号：加起来不超过画面的 3% */
+  --c-accent: #99D52A;       /* 填充：主按钮、选中、当前导航 */
+  --c-accent-ink: #99D52A;   /* 文字和线条：描边按钮、提示符、焦点框、光标 */
+  --c-on-accent: #0A0B09;    /* 亮绿填充上的文字 */
+  --c-accent-wash: rgba(153, 213, 42, .07); /* 激活面板的底色 */
+  --c-phosphor: #80EE64;     /* 成功、终端输出 */
+  --c-mint: #BFF9B4;         /* 代码字符串 */
+  --c-amber: #F5A524;        /* 警告 */
+  --c-red: #FF6B57;          /* 错误 */
+
+  /* 质感 */
+  --scan-panel: repeating-linear-gradient(to bottom, rgba(234, 242, 223, .045) 0 1px, transparent 1px 3px); /* 面板底纹 */
+  --scan-screen: repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0, 0, 0, .14) 2px 3px);        /* 全屏扫描线 */
+  --vignette: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, .32) 100%);                  /* 暗角 */
+  --glow-accent: 0 0 6px rgba(153, 213, 42, .55), 0 0 18px rgba(153, 213, 42, .22);                          /* 光标辉光 */
+  --glow-btn: 0 0 18px rgba(153, 213, 42, .22);                                                               /* 主按钮光晕 */
+  --glow-ink: 0 0 24px rgba(234, 242, 223, .18);                                                              /* 首屏大字的微光 */
+}
+
+/* ---------- 亮色主题：液晶屏 ---------- */
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* 屏幕 */
+  --c-screen: #D2D7C3;       /* 暖灰绿，液晶屏底色 */
+  --c-panel: #DCE0CE;
+  --c-raised: #E4E7D8;
+  --c-line: #AEB59D;
+  --c-line-strong: #8A927A;
+
+  /* 文字 */
+  --c-ink: #1E2416;          /* 液晶深墨，对比度 10.8:1 */
+  --c-ink-2: #3A4230;        /* 7.1:1 */
+  --c-ink-3: #555D45;        /* 4.7:1 */
+
+  /* 信号 */
+  --c-accent: #99D52A;       /* 亮绿只做填充，不当文字用 */
+  --c-accent-ink: #3A5A0A;   /* 浅底上的绿字、绿线改用深绿，5.4:1 */
+  --c-on-accent: #1E2416;
+  --c-accent-wash: rgba(153, 213, 42, .2);
+  --c-phosphor: #28621A;     /* 5.0:1 */
+  --c-mint: #2C6650;         /* 4.6:1 */
+  --c-amber: #7A4F00;        /* 4.8:1 */
+  --c-red: #9E2C1A;          /* 5.0:1 */
+
+  /* 质感：液晶屏是像素网格，没有暗角，也不发光 */
+  --scan-panel: repeating-linear-gradient(to bottom, rgba(30, 36, 22, .06) 0 1px, transparent 1px 3px);
+  --scan-screen: repeating-linear-gradient(to bottom, transparent 0 2px, rgba(30, 36, 22, .035) 2px 3px),
+    repeating-linear-gradient(to right, transparent 0 2px, rgba(30, 36, 22, .035) 2px 3px);
+  --vignette: none;
+  --glow-accent: none;
+  --glow-btn: none;
+  --glow-ink: none;
+}
+
+/* 单独指定了主题的区块，铺上对应的底色和文字色 */
+[data-theme] { color: var(--c-ink); background-color: var(--c-screen); }
+
+/* ---------- 两套主题共用 ---------- */
+:root {
+  /* 字体 */
+  /* 显示字：英文用 Geist Pixel，中文自动回退到缝合像素 */
+  --f-display: "Geist Pixel", "Fusion Pixel 12px M latin", "Fusion Pixel 12px Mono latin", ui-monospace, monospace;
+  /* 像素标签：中英文都用缝合像素，12px 是它的原生尺寸 */
+  --f-pixel: "Fusion Pixel 12px M latin", "Fusion Pixel 12px Mono latin", "Geist Pixel", ui-monospace, monospace;
+  /* 正文：英文用等宽字体，中文用系统黑体 */
+  --f-body: "Geist Mono", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", ui-monospace, monospace;
+
+  /* 字号：像素字只用 12 的倍数 */
+  --t-12: 12px;  /* 标签（像素 ×1） */
+  --t-14: 14px;  /* 界面文字（正文字体） */
+  --t-16: 16px;  /* 正文（正文字体） */
+  --t-24: 24px;  /* 卡片标题（像素 ×2） */
+  --t-36: 36px;  /* 区块标题（像素 ×3） */
+  --t-48: 48px;  /* 页面标题（像素 ×4） */
+  --t-96: 96px;  /* 首屏大字（像素 ×8） */
+
+  /* 间距：6px 网格 */
+  --s-1: 6px;
+  --s-2: 12px;
+  --s-3: 18px;
+  --s-4: 24px;
+  --s-5: 36px;
+  --s-6: 48px;
+  --s-7: 72px;
+  --s-8: 96px;
+
+  /* 形状 */
+  --radius: 0;
+  --bw: 1px;          /* 默认边框 */
+  --bw-strong: 2px;   /* 当前项 */
+
+  /* 动效 */
+  --dur-boot: 700ms;  /* 开机：全站唯一一次入场动画 */
+  --dur-hover: 150ms; /* 悬停反显的颜色过渡 */
+  --tr-hover: background-color var(--dur-hover) ease-out, color var(--dur-hover) ease-out, border-color var(--dur-hover) ease-out;
+}
+
+/* =================== 基础 =================== */
+*, *::before, *::after { box-sizing: border-box; }
+html { background: var(--c-screen); }
+body {
+  margin: 0;
+  background: var(--c-screen);
+  color: var(--c-ink);
+  font: 400 var(--t-16)/1.75 var(--f-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+/* 全屏质感：暗色是扫描线加暗角，亮色是像素网格。给 <html> 加 .crt-off 可以关掉 */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+  background: var(--scan-screen), var(--vignette);
+}
+.crt-off body::after { display: none; }
+/* 切换主题的瞬间关掉过渡，整页同时换色（phosphor-theme.js 会自动加这个类） */
+.theme-switching *, .theme-switching *::before, .theme-switching *::after { transition: none !important; }
+
+::selection { background: var(--c-accent); color: var(--c-on-accent); }
+:focus-visible { outline: 2px solid var(--c-accent-ink); outline-offset: 3px; }
+
+.ty-display { font-family: var(--f-display); font-weight: 400; font-synthesis: none; }
+.ty-pixel { font-family: var(--f-pixel); font-weight: 400; font-synthesis: none; }
+
+/* 滚动条：方块滑块，左侧一条细轨道线，两套主题自动换色 */
+/* Chrome、Edge、Safari：形状和颜色都能控制 */
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-track:vertical { border-left: var(--bw) solid var(--c-line); }
+::-webkit-scrollbar-track:horizontal { border-top: var(--bw) solid var(--c-line); }
+::-webkit-scrollbar-thumb {
+  background-color: var(--c-ink-3);  /* 两套主题下对比度都在 4.5:1 以上 */
+  background-clip: padding-box;      /* 四周留 3px 空隙，滑块像嵌在轨道里的方块 */
+  border: 3px solid transparent;
+  border-radius: 0;
+}
+::-webkit-scrollbar-thumb:hover { background-color: var(--c-ink-2); }
+::-webkit-scrollbar-thumb:active { background-color: var(--c-accent-ink); } /* 拖动时变主色 */
+::-webkit-scrollbar-corner { background: transparent; }
+/* Firefox：只能改颜色和粗细，形状跟随系统 */
+@supports not selector(::-webkit-scrollbar) {
+  * { scrollbar-width: thin; scrollbar-color: var(--c-ink-3) transparent; }
+}
+
+/* 光标：全站唯一会闪的东西 */
+.cursor {
+  display: inline-block;
+  width: .5em;
+  height: .9em;
+  margin-left: .12em;
+  vertical-align: middle;
+  background: var(--c-accent-ink);
+  box-shadow: var(--glow-accent);
+  animation: ph-blink 1s steps(1, end) infinite;
+}
+@keyframes ph-blink { 50% { opacity: 0; } }
+
+/* 开机动画：只给首屏用。播完建议把 .boot 移除，免得切换主题时重播 */
+/* 显像管：先亮一条横线，再撑满 */
+.boot { animation: ph-crt-on var(--dur-boot) cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes ph-crt-on {
+  0%, 40% { transform: scaleY(.004); background-color: var(--c-ink); }
+  70% { transform: scaleY(1); background-color: color-mix(in srgb, var(--c-ink) 12%, transparent); }
+  100% { transform: scaleY(1); background-color: transparent; }
+}
+/* 液晶屏：像 Game Boy 开机一样，分 4 档显出来 */
+[data-theme="light"] .boot { animation: ph-lcd-on var(--dur-boot) steps(4, start) both; }
+@keyframes ph-lcd-on { from { opacity: 0; } to { opacity: 1; } }
+
+/* =================== 组件 =================== */
+
+/* 按钮：悬停时反显 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  padding: var(--s-2) var(--s-3);
+  font: 500 var(--t-14)/24px var(--f-body);
+  color: var(--c-accent-ink);
+  background: transparent;
+  border: var(--bw) solid var(--c-accent-ink);
+  border-radius: var(--radius);
+  text-decoration: none;
+  cursor: pointer;
+  transition: var(--tr-hover);
+}
+.btn:hover { background: var(--c-accent); color: var(--c-on-accent); }
+.btn--primary { background: var(--c-accent); color: var(--c-on-accent); box-shadow: var(--glow-btn); }
+.btn--primary:hover { background: var(--c-screen); color: var(--c-accent-ink); }
+.btn:disabled { color: var(--c-ink-3); border-color: var(--c-line-strong); background: transparent; box-shadow: none; cursor: not-allowed; }
+
+.link { color: var(--c-ink); text-decoration: underline dotted; text-underline-offset: 4px; padding: 0 2px; transition: var(--tr-hover); }
+.link:hover { background: var(--c-ink); color: var(--c-screen); text-decoration: none; }
+
+/* 标签与状态 */
+.tag {
+  display: inline-block;
+  padding: var(--s-1) var(--s-2);
+  font: 400 var(--t-12)/18px var(--f-pixel);
+  letter-spacing: 2px;
+  color: var(--c-ink-2);
+  border: var(--bw) solid var(--c-line-strong);
+  white-space: nowrap;
+}
+.tag--accent { color: var(--c-accent-ink); border-color: var(--c-accent-ink); }
+
+.status { display: inline-flex; align-items: center; gap: var(--s-1); font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); }
+.status::before { content: ""; width: 6px; height: 6px; background: currentColor; }
+.status--ok { color: var(--c-phosphor); }
+.status--warn { color: var(--c-amber); }
+.status--err { color: var(--c-red); }
+
+/* 层级面板：默认细线 / 激活加底纹 / 当前 2px */
+.layer {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-4);
+  background: var(--c-panel);
+  border: var(--bw) solid var(--c-line);
+}
+.layer.is-active { border-color: var(--c-accent-ink); background: var(--scan-panel), var(--c-accent-wash); }
+.layer.is-current { border: var(--bw-strong) solid var(--c-accent-ink); padding: calc(var(--s-4) - 1px); background: var(--scan-panel), var(--c-accent-wash); }
+.layer__main { padding-right: var(--s-5); min-width: 0; }
+.layer__no { position: absolute; top: var(--s-2); right: var(--s-2); font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); }
+.layer.is-active .layer__no, .layer.is-current .layer__no { color: var(--c-accent-ink); }
+.layer__title { margin: 0; font: 400 var(--t-24)/36px var(--f-display); font-synthesis: none; }
+.layer__desc { margin: var(--s-1) 0 0; font-size: var(--t-14); line-height: 24px; color: var(--c-ink-2); }
+.layer-arrow { display: block; padding: var(--s-2) 0; text-align: center; font: 400 var(--t-24)/24px var(--f-display); color: var(--c-ink-3); }
+
+/* 终端代码块 */
+.term { border: var(--bw) solid var(--c-line-strong); background: var(--c-panel); min-width: 0; }
+.term__bar { display: flex; justify-content: space-between; align-items: center; gap: var(--s-2); padding: var(--s-1) var(--s-2); border-bottom: var(--bw) solid var(--c-line); font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); }
+.term__copy { font: inherit; color: var(--c-ink-2); background: none; border: var(--bw) solid var(--c-line-strong); padding: 0 var(--s-1); cursor: pointer; transition: var(--tr-hover); }
+.term__copy:hover { background: var(--c-ink); color: var(--c-screen); border-color: var(--c-ink); }
+.term__body { margin: 0; padding: var(--s-3); font: 400 var(--t-14)/24px var(--f-body); color: var(--c-ink-2); background: var(--scan-panel); overflow-x: auto; white-space: pre; }
+.t-p { color: var(--c-accent-ink); }
+.t-cmd { color: var(--c-ink); }
+.t-ok { color: var(--c-phosphor); }
+.t-warn { color: var(--c-amber); }
+.t-err { color: var(--c-red); }
+.t-str { color: var(--c-mint); }
+.t-com { color: var(--c-ink-3); }
+
+/* 输入框：左侧提示符，光标用主色 */
+.field { display: grid; gap: var(--s-1); }
+.field__label { font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-2); }
+.field__box { display: flex; align-items: center; gap: var(--s-2); padding: 0 var(--s-2); background: var(--c-screen); border: var(--bw) solid var(--c-line-strong); }
+.field__box:focus-within { border-color: var(--c-accent-ink); box-shadow: inset 0 0 0 1px var(--c-accent-ink); }
+.field__prompt { font: 400 var(--t-16)/1 var(--f-display); color: var(--c-accent-ink); }
+.field__input { flex: 1; min-width: 0; padding: var(--s-2) 0; font: 400 var(--t-16)/24px var(--f-body); color: var(--c-ink); background: transparent; border: 0; outline: none; caret-color: var(--c-accent-ink); }
+.field__input::placeholder { color: var(--c-ink-3); }
+.field__msg { font-size: var(--t-12); line-height: 18px; color: var(--c-ink-3); }
+.field--error .field__box { border-color: var(--c-red); }
+.field--error .field__prompt, .field--error .field__msg { color: var(--c-red); }
+
+/* 导航：当前页用主色反显，悬停用文字色反显 */
+.nav { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-1); padding: var(--s-1); background: var(--c-screen); border: var(--bw) solid var(--c-line-strong); }
+.nav__brand { margin-right: var(--s-2); padding: 0 var(--s-2); font: 400 var(--t-24)/36px var(--f-display); font-synthesis: none; color: var(--c-ink); text-decoration: none; }
+.nav__link { padding: var(--s-1) var(--s-2); font: 400 var(--t-14)/24px var(--f-body); color: var(--c-ink-2); text-decoration: none; transition: var(--tr-hover); }
+.nav__link:hover { background: var(--c-ink); color: var(--c-screen); }
+.nav__link.is-current { background: var(--c-accent); color: var(--c-on-accent); }
+.nav__path { margin-left: auto; padding: 0 var(--s-2); font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); }
+
+/* 分段切换：主题切换这类二选一、三选一 */
+.seg { display: inline-flex; background: var(--c-screen); border: var(--bw) solid var(--c-line-strong); }
+.seg__opt {
+  padding: var(--s-1) var(--s-2);
+  font: 400 var(--t-12)/18px var(--f-pixel);
+  color: var(--c-ink-2);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+  transition: var(--tr-hover);
+}
+.seg__opt + .seg__opt { border-left: var(--bw) solid var(--c-line-strong); }
+.seg__opt:hover { background: var(--c-ink); color: var(--c-screen); }
+.seg__opt[aria-pressed="true"] { background: var(--c-accent); color: var(--c-on-accent); }
+
+@media (max-width: 640px) {
+  .layer { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cursor, .boot, [data-theme="light"] .boot { animation: none; }
+  .btn, .link, .term__copy, .nav__link, .seg__opt { transition: none; }
+}
