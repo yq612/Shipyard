@@ -280,12 +280,12 @@ export class Repository {
     return rows.map((r) => r.id);
   }
 
-  // Deletes finished deployments created before `cutoff`; returns their ids.
-  deleteFinishedBefore(cutoff: number): number[] {
+  // Deletes finished deployments created before `cutoff`; returns what was deleted.
+  deleteFinishedBefore(cutoff: number): { id: number; createdAt: number }[] {
     return this.transaction(() => {
       const rows = this.db
-        .query(`SELECT id FROM deployments WHERE created_at < ? AND status NOT IN ('queued', 'running')`)
-        .all(cutoff) as { id: number }[];
+        .query(`SELECT id, created_at FROM deployments WHERE created_at < ? AND status NOT IN ('queued', 'running')`)
+        .all(cutoff) as { id: number; created_at: number }[];
       const ids = rows.map((r) => r.id);
       const unlink = this.db.query(`UPDATE deployments SET retry_of = NULL WHERE retry_of = ?`);
       const del = this.db.query(`DELETE FROM deployments WHERE id = ?`);
@@ -294,7 +294,7 @@ export class Repository {
         unlink.run(id);
         del.run(id);
       }
-      return ids;
+      return rows.map((r) => ({ id: r.id, createdAt: r.created_at }));
     });
   }
 }

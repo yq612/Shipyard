@@ -68,7 +68,8 @@ describe("DeploymentService", () => {
     expect(replayed.tasks[0]!.status).toBe("done");
     expect(replayed.tasks[0]!.stages).toEqual({ clone: "done", install: "done", build: "done", upload: "done" });
 
-    const lines = env.logs.readAll(id, 0).map((l) => l.text);
+    expect(env.logs.path(summary, 0)).toMatch(new RegExp(`/\\d{8}-\\d{6}-${id}/0\\.log$`));
+    const lines = env.logs.readAll(summary, 0).map((l) => l.text);
     expect(lines).toContain("install output for PK-QuickBuy");
     expect(lines.at(-1)).toBe("✔ 发布成功");
     expect(env.logs.isOpen(id, 0)).toBe(false);
@@ -150,7 +151,7 @@ describe("DeploymentService", () => {
     expect(env.repo.summary(id)!.status).toBe("partial");
     const state = env.service.detail(id)!.state;
     expect(state.tasks[0]!.stages.clone).toBe("cancelled");
-    expect(env.logs.readAll(id, 0).at(-1)!.text).toBe("■ 已取消");
+    expect(env.logs.readAll(env.repo.summary(id)!, 0).at(-1)!.text).toBe("■ 已取消");
     await expectError(() => env.service.cancel(id), "NOTHING_TO_CANCEL");
   });
 

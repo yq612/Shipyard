@@ -248,17 +248,18 @@ export function createApp(deps: AppDeps): Hono<Env> {
 
   api.get("/deployments/:id/envs/:idx/logs", guardRead, (c) => {
     const id = deploymentId(c);
-    const { idx } = envIdx(c, id);
+    const { idx, detail } = envIdx(c, id);
+    const ref = detail.deployment;
     const follow = c.req.query("follow") === "1";
 
     if (c.req.query("download") === "1") {
-      const text = logs.readAll(id, idx).map((l) => `${new Date(l.ts).toISOString()} [${l.stream}]${l.stage ? ` [${l.stage}]` : ""} ${l.text}`).join("\n");
+      const text = logs.readAll(ref, idx).map((l) => `${new Date(l.ts).toISOString()} [${l.stream}]${l.stage ? ` [${l.stage}]` : ""} ${l.text}`).join("\n");
       c.header("Content-Disposition", `attachment; filename="deployment-${id}-env-${idx}.log"`);
       return c.text(text + "\n");
     }
 
     if (!follow) {
-      const all = logs.readAll(id, idx);
+      const all = logs.readAll(ref, idx);
       const offset = Math.max(0, intParam(c.req.query("offset")) ?? 0);
       const limit = Math.min(Math.max(intParam(c.req.query("limit")) ?? 2000, 1), 10000);
       const lines = all.slice(offset, offset + limit);
@@ -295,7 +296,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
         }
       });
       try {
-        const all = logs.readAll(id, idx);
+        const all = logs.readAll(ref, idx);
         const tail: LogTail = { lines: all.slice(-LOG_TAIL_LINES), skipped: Math.max(0, all.length - LOG_TAIL_LINES) };
         await send("tail", tail);
         if (!logs.isOpen(id, idx) && isSettled(service, id, idx)) {

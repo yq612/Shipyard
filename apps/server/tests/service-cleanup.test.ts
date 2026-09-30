@@ -65,9 +65,9 @@ describe("service resource cleanup after observer failures", () => {
     env = setupService();
     const warnings = captureWarnings();
     const append = env.logs.append.bind(env.logs);
-    const spy = spyOn(env.logs, "append").mockImplementation((id, idx, line) => {
+    const spy = spyOn(env.logs, "append").mockImplementation((ref, idx, line) => {
       if (line.text === "✔ 发布成功") throw new Error("log filesystem full");
-      append(id, idx, line);
+      append(ref, idx, line);
     });
     restore.push(() => spy.mockRestore());
     const { id } = env.service.create("PK", ["QuickBuy 环境"], OPERATOR);

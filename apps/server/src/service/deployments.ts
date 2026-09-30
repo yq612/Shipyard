@@ -65,6 +65,7 @@ export interface ServiceDeps {
 // In-memory state of a deployment that still has queued or running envs.
 interface Runtime {
   id: number;
+  createdAt: number;
   countryName: string;
   specs: EnvSpec[];
   creds: SshCredentials;
@@ -309,6 +310,7 @@ export class DeploymentService {
 
     const rt: Runtime = {
       id,
+      createdAt: now,
       countryName: country.name,
       specs,
       creds: { user: config.ssh.user, port: config.ssh.port, privateKey, keepPrevious: config.ssh.keepPrevious },
@@ -433,9 +435,9 @@ export class DeploymentService {
   // Deletes finished deployments (and their logs) older than the retention window.
   cleanupOld(): number {
     const days = this.config.get().server.logRetentionDays;
-    const ids = this.repo.deleteFinishedBefore(this.clock() - days * 24 * 3600 * 1000);
-    for (const id of ids) this.logs.removeDeployment(id);
-    return ids.length;
+    const removed = this.repo.deleteFinishedBefore(this.clock() - days * 24 * 3600 * 1000);
+    for (const ref of removed) this.logs.removeDeployment(ref);
+    return removed.length;
   }
 
   // ------------------------------------------------------------- internals
@@ -491,7 +493,7 @@ export class DeploymentService {
 
   private log(rt: Runtime, idx: number, stage: Stage | undefined, stream: LogStream, text: string): void {
     try {
-      this.logs.append(rt.id, idx, { ts: this.clock(), stream, ...(stage ? { stage } : {}), text: redactUrl(text) });
+      this.logs.append(rt, idx, { ts: this.clock(), stream, ...(stage ? { stage } : {}), text: redactUrl(text) });
     } catch (error) {
       this.warn(rt.id, `写入环境 ${idx} 日志失败`, error);
     }

@@ -5,6 +5,12 @@ import type { LogLine } from "@shipyard/shared";
 export const MAX_LINE_BYTES = 4 * 1024;
 export const MAX_LOG_BYTES = 20 * 1024 * 1024;
 
+// Enough to locate a deployment's logs; a DeploymentSummary is one.
+export interface LogRef {
+  id: number;
+  createdAt: number;
+}
+
 export type LogListener = (msg: { type: "line"; line: LogLine } | { type: "end" }) => void;
 
 interface Writer {
@@ -20,9 +26,11 @@ function truncateLine(text: string): string {
   return new TextDecoder().decode(bytes.slice(0, MAX_LINE_BYTES)).replace(/�$/, "") + " …（该行过长，已截断）";
 }
 
-// One JSON-lines file per environment: data/logs/<deploymentId>/<idx>.log.
-// Writes are synchronous so a reader that subscribes and then reads the file
-// in the same tick sees every line exactly once.
+const pad = (n: number) => String(n).padStart(2, "0");
+
+// One JSON-lines file per environment: data/logs/<YYYYMMDD-HHmmss>-<id>/<idx>.log,
+// stamped with the deployment's local creation time. Writes are synchronous so a
+// reader that subscribes then reads in the same tick sees every line exactly once.
 export class LogStore {
   private writers = new Map<string, Writer>();
   private listeners = new Map<string, Set<LogListener>>();
@@ -35,23 +43,29 @@ export class LogStore {
     return `${deploymentId}/${idx}`;
   }
 
-  path(deploymentId: number, idx: number): string {
-    return join(this.dir, String(deploymentId), `${idx}.log`);
+  private deploymentDir(ref: LogRef): string {
+    const d = new Date(ref.createdAt);
+    const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+    return join(this.dir, `${stamp}-${ref.id}`);
   }
 
-  private writer(deploymentId: number, idx: number): Writer {
-    const key = this.key(deploymentId, idx);
+  path(ref: LogRef, idx: number): string {
+    return join(this.deploymentDir(ref), `${idx}.log`);
+  }
+
+  private writer(ref: LogRef, idx: number): Writer {
+    const key = this.key(ref.id, idx);
     let w = this.writers.get(key);
     if (!w) {
-      mkdirSync(join(this.dir, String(deploymentId)), { recursive: true });
-      w = { fd: openSync(this.path(deploymentId, idx), "a"), bytes: 0, capped: false };
+      mkdirSync(this.deploymentDir(ref), { recursive: true });
+      w = { fd: openSync(this.path(ref, idx), "a"), bytes: 0, capped: false };
       this.writers.set(key, w);
     }
     return w;
   }
 
-  append(deploymentId: number, idx: number, line: LogLine): void {
-    const w = this.writer(deploymentId, idx);
+  append(ref: LogRef, idx: number, line: LogLine): void {
+    const w = this.writer(ref, idx);
     if (w.capped) return;
     let entry: LogLine = { ...line, text: truncateLine(line.text) };
     let data = JSON.stringify(entry) + "\n";
@@ -61,7 +75,7 @@ export class LogStore {
       data = JSON.stringify(entry) + "\n";
     }
     w.bytes += writeSync(w.fd, data);
-    this.emit(this.key(deploymentId, idx), { type: "line", line: entry });
+    this.emit(this.key(ref.id, idx), { type: "line", line: entry });
   }
 
   // Closes the log for good; followers get `end`. Safe to call without any
@@ -105,8 +119,8 @@ export class LogStore {
     }
   }
 
-  readAll(deploymentId: number, idx: number): LogLine[] {
-    const path = this.path(deploymentId, idx);
+  readAll(ref: LogRef, idx: number): LogLine[] {
+    const path = this.path(ref, idx);
     if (!existsSync(path)) return [];
     const lines: LogLine[] = [];
     for (const raw of readFileSync(path, "utf8").split("\n")) {
@@ -120,8 +134,8 @@ export class LogStore {
     return lines;
   }
 
-  removeDeployment(deploymentId: number): void {
-    rmSync(join(this.dir, String(deploymentId)), { recursive: true, force: true });
+  removeDeployment(ref: LogRef): void {
+    rmSync(this.deploymentDir(ref), { recursive: true, force: true });
   }
 
   closeAll(): void {
