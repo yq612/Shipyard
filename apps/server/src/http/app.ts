@@ -139,8 +139,6 @@ export function createApp(deps: AppDeps): Hono<Env> {
     return c.json(body);
   });
 
-  api.get("/status", guardRead, (c) => c.json(service.status()));
-
   api.get("/config", guardRead, (c) => c.json(service.configView()));
 
   // Pure computation — anyone who can read may preview the plan.

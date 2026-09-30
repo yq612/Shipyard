@@ -59,7 +59,7 @@ access:
   allowedOrigins: [https://deploy.example.com]
 ```
 
-开了 VPN 分流时，访问该域名的出口 IP 可能和访问海外网站的不同，以页面顶栏（或 `/api/whoami`）显示的为准。
+开了 VPN 分流时，访问该域名的出口 IP 可能和访问海外网站的不同，以 `/api/whoami` 返回的为准（不在白名单时，页面顶栏会显示「只读」，悬停可看到 IP）。
 
 ### 首次
 

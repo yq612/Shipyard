@@ -9,7 +9,6 @@ import type {
   DeploymentListQuery,
   PlanRequest,
   PlanResponse,
-  ServerStatus,
   WhoAmI,
 } from "@shipyard/shared";
 
@@ -62,7 +61,6 @@ function qs(params: Record<string, string | number | undefined>): string {
 
 export const api = {
   whoami: () => request<WhoAmI>("GET", "/api/whoami"),
-  status: () => request<ServerStatus>("GET", "/api/status"),
   config: () => request<ConfigView>("GET", "/api/config"),
   plan: (body: PlanRequest) => request<PlanResponse>("POST", "/api/deployments/plan", body),
   create: (body: CreateDeploymentRequest) => request<CreatedDeployment>("POST", "/api/deployments", body),

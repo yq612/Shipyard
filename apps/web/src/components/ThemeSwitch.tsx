@@ -8,10 +8,10 @@ declare global {
   }
 }
 
-const OPTIONS: [Pref, string][] = [
-  ["auto", "跟随系统"],
-  ["dark", "暗色"],
-  ["light", "亮色"],
+const OPTIONS: [Pref, string, string][] = [
+  ["auto", "跟随系统", "ico-monitor"],
+  ["dark", "暗色", "ico-moon"],
+  ["light", "亮色", "ico-sun"],
 ];
 
 // phosphor-theme.js binds clicks on [data-theme-set] by delegation, but only
@@ -25,10 +25,10 @@ export function ThemeSwitch() {
     return () => document.removeEventListener("phosphor:themechange", onChange);
   }, []);
   return (
-    <div className="seg" role="group" aria-label="主题">
-      {OPTIONS.map(([value, label]) => (
-        <button key={value} className="seg__opt" type="button" data-theme-set={value} aria-pressed={pref === value}>
-          {label}
+    <div className="seg seg--icon" role="group" aria-label="主题">
+      {OPTIONS.map(([value, label, icon]) => (
+        <button key={value} className="seg__opt" type="button" data-theme-set={value} aria-pressed={pref === value} aria-label={label} title={label}>
+          <span className={icon} aria-hidden="true" />
         </button>
       ))}
     </div>

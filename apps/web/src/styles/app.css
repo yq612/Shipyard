@@ -6,8 +6,8 @@
    ========================================================= */
 
 /* ---------- 暗色主题提高对比 ----------
-   原本的注释色 #7A8270 在面板上只有 4.3:1，12px 像素字很难认；扫描线和暗角又压暗了一层。
-   这里把三级文字和线条整体提亮（墨色 18:1，次要 11.9:1，注释 7.7:1），扫描线和暗角减弱。 */
+   原注释色在面板上只有 4.3:1，12px 像素字难认。文字和线条整体提亮
+   （墨色 18:1，次要 11.9:1，注释 7.7:1），扫描线和暗角减弱。 */
 [data-theme="dark"] {
   --c-ink: #F2F7EA;
   --c-ink-2: #C4CCB7;
@@ -19,11 +19,9 @@
 }
 
 /* ---------- 亮色主题减负 ----------
-   设计体系原本的液晶底色 #D2D7C3 偏暗，这里整体提亮到接近白纸，只留一点暖灰绿色相：
-   - 面板比底色再白一档（1.1:1），边框线加深，卡片边界靠线条分清
-   - 次要和注释文字加深（次要 11:1，注释 7.8:1）：12px 像素字笔画细，亮底上又没有辉光，
-     原来的注释色数字上够了，读起来仍然发虚
-   - 关掉全屏像素网格：它盖在所有内容上面，每个字都压着一层纹理。面板底纹 --scan-panel 保留 */
+   底色提亮到接近白纸，面板再白一档，边框加深，卡片靠线条分清。
+   次要和注释文字加深（11:1、7.8:1）：12px 像素字在亮底上没有辉光，容易发虚。
+   全屏质感只留横条纹，不叠竖线，免得每个字都压着格子；节奏和暗色扫描线一样。 */
 [data-theme="light"] {
   --c-screen: #F1F3EB;
   --c-panel: #FCFDFA;
@@ -32,24 +30,26 @@
   --c-line-strong: #8C947B;
   --c-ink-2: #343B2A;
   --c-ink-3: #474E3A;
-  --scan-screen: none;
+  --scan-screen: repeating-linear-gradient(to bottom, transparent 0 2px, rgba(30, 36, 22, .05) 2px 3px);
 }
 
 /* ---------- 页面骨架 ----------
-   顶栏和页脚固定，只有中间的内容区滚动。三行都预留滚动条的位置（scrollbar-gutter），
-   内容区出现滚动条时，顶栏、内容、页脚的左右边缘仍然对齐。 */
+   顶栏和页脚固定，只有内容区滚动。三行都预留滚动条位置，出现滚动条时左右边缘仍然对齐。 */
 .page { --page-w: 1272px; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100vh; height: 100dvh; }
 .page__head, .page__main, .page__foot { padding: 0 var(--s-4); scrollbar-gutter: stable; }
 .page__head, .page__foot { overflow: hidden; }
 .page__main { overflow-y: auto; }
 .page__head > *, .page__body, .page__foot > * { max-width: var(--page-w); margin: 0 auto; }
-.page__head { padding: var(--s-3) var(--s-4) var(--s-2); }
-.page__body { padding: var(--s-2) 0 var(--s-6); }
+.page__head { padding: var(--s-1) var(--s-4) 0; }
+.page__body { padding: var(--s-4) 0 var(--s-6); }
 
-/* ---------- 顶栏 ---------- */
-.topbar .nav__brand { display: inline-flex; align-items: center; gap: var(--s-1); }
+/* ---------- 顶栏 ----------
+   一条通栏加底部分隔线。入口是标签页：当前页 2px 实线压在分隔线上，悬停点线，
+   和国家卡片同一套线型。 */
+.topbar { display: flex; align-items: stretch; gap: var(--s-4); min-height: 48px; border-bottom: var(--bw) solid var(--c-line); }
+.topbar__brand { display: inline-flex; align-items: center; gap: var(--s-1); font: 400 var(--t-24)/36px var(--f-display); font-synthesis: none; color: var(--c-ink); text-decoration: none; white-space: nowrap; }
 .topbar__prompt { color: var(--c-accent-ink); }
-/* 品牌后的窄光标：照开机动画的显像管，熄灭时先压成一条亮线再余辉褪掉，亮起时从亮线撑开 */
+/* 品牌后的光标：像显像管关机，先压成一条亮线再褪掉，亮起时从亮线撑开 */
 .topbar__cursor { width: 3px; height: 18px; background: var(--c-accent-ink); box-shadow: var(--glow-accent); animation: topbar-cursor 1.8s infinite; }
 @keyframes topbar-cursor {
   0%, 50% { opacity: 1; transform: none; animation-timing-function: cubic-bezier(.6, 0, .9, .4); }
@@ -59,11 +59,14 @@
   100% { opacity: 1; transform: none; }
 }
 @media (prefers-reduced-motion: reduce) { .topbar__cursor { animation: none; } }
-.topbar__right { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
-.topbar__stat { font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); white-space: nowrap; }
-.topbar__stat b { font-weight: 400; color: var(--c-ink); }
-.topbar__ip { font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-2); white-space: nowrap; }
-.topbar__sep { width: var(--bw); height: 24px; background: var(--c-line); }
+.topbar__tabs { display: flex; }
+.topbar__tab { display: flex; align-items: center; margin-bottom: calc(-1 * var(--bw)); padding: 0 var(--s-3); font: 400 var(--t-14)/24px var(--f-body); color: var(--c-ink-3); text-decoration: none; white-space: nowrap; border-bottom: var(--bw-strong) solid transparent; transition: var(--tr-hover); }
+.topbar__tab:hover { color: var(--c-ink); border-bottom-style: dotted; border-bottom-color: var(--c-accent-ink); }
+.topbar__tab.is-current { color: var(--c-ink); border-bottom-style: solid; border-bottom-color: var(--c-accent-ink); }
+.topbar__right { margin-left: auto; display: flex; align-items: center; gap: var(--s-3); }
+/* 主题切换只留图标，文字在 title 和 aria-label 里 */
+.seg--icon .seg__opt { display: grid; place-items: center; padding: var(--s-1) var(--s-2); }
+@media (prefers-reduced-motion: reduce) { .topbar__tab { transition: none; } }
 
 /* ---------- 页面标题 ---------- */
 .head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s-2) var(--s-4); }
@@ -103,9 +106,12 @@ button.step:hover .step__no { color: inherit; }
 .pixel { font: 400 var(--t-12)/18px var(--f-pixel); }
 .nowrap { white-space: nowrap; }
 /* 对勾 / 叉：像素字里的 ✔ ✗ 太小，改用 assets/*.svg 当蒙版，颜色跟随文字 */
-.ico-check, .ico-cross, .task__stage.is-done::before, .task__stage.is-error::before { display: inline-block; width: 12px; height: 12px; vertical-align: middle; background-color: currentColor; mask: center / contain no-repeat; }
+.ico-check, .ico-cross, .ico-monitor, .ico-moon, .ico-sun, .task__stage.is-done::before, .task__stage.is-error::before { display: inline-block; width: 12px; height: 12px; vertical-align: middle; background-color: currentColor; mask: center / contain no-repeat; }
 .ico-check, .task__stage.is-done::before { mask-image: url("../assets/check.svg"); }
 .ico-cross, .task__stage.is-error::before { mask-image: url("../assets/cross.svg"); }
+.ico-monitor { mask-image: url("../assets/monitor.svg"); }
+.ico-moon { mask-image: url("../assets/moon.svg"); }
+.ico-sun { mask-image: url("../assets/sun.svg"); }
 .ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
 .grow { flex: 1; min-width: 0; }
@@ -117,10 +123,9 @@ button.step:hover .step__no { color: inherit; }
 .btn--danger { color: var(--c-red); border-color: var(--c-red); }
 .btn--danger:hover { background: var(--c-red); color: var(--c-screen); }
 .btn[aria-busy="true"] { cursor: progress; }
-/* 悬停找信号：反显之外，按钮里的扫描线慢慢往下爬，像老电视还没锁住信号。
-   线条取 currentColor，反显后文字是什么色线条就是什么色，各种按钮共用这一条。
-   1px 线 3px 一格，和 --scan-panel 同规格；上面多留 3px，往下挪一格正好接上，看不出循环。
-   动画一直挂着、平时暂停，移开时线条原地淡出，不会弹回去 */
+/* 悬停时按钮里的扫描线往下爬，像老电视还没锁住信号。线条取 currentColor，反显后跟着变色。
+   1px 线 3px 一格；上面多留 3px，挪一格正好接上，看不出循环。
+   动画平时暂停，移开时原地淡出，不会弹回去 */
 .btn { position: relative; isolation: isolate; overflow: hidden; }
 .btn::before {
   content: ""; position: absolute; inset: -3px 0 0; z-index: -1; pointer-events: none;
@@ -156,9 +161,7 @@ button.step:hover .step__no { color: inherit; }
 /* 转圈：终端风的点阵 spinner，只在执行中出现 */
 .spin { display: inline-block; width: 1ch; text-align: center; color: var(--c-accent-ink); }
 
-/* 复选框：方块，选中填绿。
-   inline-grid 的基线取第一个子项：勾选后多出 ::after，基线会移动、行高跟着变，
-   表格就会抖一下，所以固定按中线对齐 */
+/* 复选框：方块，选中填绿。勾选后多出 ::after 会移动基线、让表格抖一下，所以按中线对齐 */
 .check { appearance: none; flex: none; display: inline-grid; place-items: center; width: 18px; height: 18px; margin: 0; vertical-align: middle; border: var(--bw) solid var(--c-line-strong); background: var(--c-screen); cursor: pointer; transition: var(--tr-hover); }
 .check:hover { border-color: var(--c-accent-ink); }
 .check:checked { background: var(--c-accent); border-color: var(--c-accent); }
@@ -167,9 +170,8 @@ button.step:hover .step__no { color: inherit; }
 .check:indeterminate::after { content: ""; width: 8px; height: 2px; background: var(--c-accent-ink); }
 .check:disabled { cursor: not-allowed; opacity: .5; }
 
-/* 下拉（components/Select.tsx）：原生 <select> 的选项列表改不了样式，所以自己画。
-   框和输入框同一套边框；展开后列表贴在框下沿，两条边框叠成一条。
-   选项悬停和键盘高亮都用文字色反显，已选项用主色加对勾 */
+/* 下拉（components/Select.tsx）：原生 <select> 的列表改不了样式，所以自己画。
+   展开后列表贴在框下沿，两条边框叠成一条；高亮用文字色反显，已选项用主色加对勾 */
 .select { position: relative; }
 .select__box { display: flex; align-items: center; gap: var(--s-2); padding: var(--s-1) var(--s-2); font: 400 var(--t-14)/24px var(--f-body); color: var(--c-ink); background: var(--c-screen); border: var(--bw) solid var(--c-line-strong); cursor: pointer; user-select: none; transition: var(--tr-hover); }
 .select__box:hover { border-color: var(--c-ink-3); }
@@ -198,7 +200,7 @@ button.step:hover .step__no { color: inherit; }
 .table-wrap { overflow-x: auto; border: var(--bw) solid var(--c-line); background: var(--c-panel); }
 .table { width: 100%; border-collapse: collapse; font-size: var(--t-14); line-height: 24px; }
 .table th { position: sticky; top: 0; padding: var(--s-1) var(--s-2); text-align: left; font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); background: var(--c-panel); border-bottom: var(--bw) solid var(--c-line-strong); white-space: nowrap; }
-.table td { padding: var(--s-1) var(--s-2); border-bottom: var(--bw) solid var(--c-line); vertical-align: middle; }
+.table td { padding: var(--s-1) var(--s-2); border-bottom: var(--bw) dotted var(--c-line); vertical-align: middle; }
 .table tr:last-child td { border-bottom: 0; }
 .table tbody tr { transition: var(--tr-hover); }
 .table tbody tr.is-clickable { cursor: pointer; }
@@ -226,8 +228,7 @@ button.step:hover .step__no { color: inherit; }
 /* 环境名不压到水印上：水印宽 72 + 离边 12 − 卡片内边距 18 */
 .country__map ~ .country__envs { padding-right: 66px; }
 .country__meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-1) var(--s-2); margin-top: auto; font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); }
-/* 环境个数是选国家时最要紧的读数：数字放大到像素字的两倍，单位留小字。
-   缝合像素的汉字比基线低 2px（12px 字格画满到底），数字跟着下移 2px，两者底边对齐 */
+/* 环境个数放大到 24px。缝合像素的汉字比基线低 2px，数字跟着下移 2px，底边对齐 */
 .country__count b { position: relative; top: 2px; margin-right: 3px; font: 400 var(--t-24)/24px var(--f-display); font-synthesis: none; color: var(--c-accent-ink); }
 
 /* ---------- ② 环境表格工具条 ---------- */
@@ -249,7 +250,7 @@ button.step:hover .step__no { color: inherit; }
 .plan-env__name { font: 400 var(--t-24)/36px var(--f-display); font-synthesis: none; }
 .plan-env__route { font-size: var(--t-14); line-height: 24px; color: var(--c-ink-2); }
 .plan-env__body { padding: 0 var(--s-3) var(--s-3); }
-.plan-step { display: grid; grid-template-columns: 24px 96px minmax(0, 1fr); gap: var(--s-1) var(--s-2); padding: var(--s-1) 0; border-top: var(--bw) solid var(--c-line); }
+.plan-step { display: grid; grid-template-columns: 24px 96px minmax(0, 1fr); gap: var(--s-1) var(--s-2); padding: var(--s-1) 0; border-top: var(--bw) dotted var(--c-line); }
 .plan-step__no { font: 400 var(--t-12)/24px var(--f-pixel); color: var(--c-accent-ink); }
 .plan-step__name { font-size: var(--t-14); line-height: 24px; color: var(--c-ink); }
 .plan-step__cmds { min-width: 0; }
@@ -379,7 +380,10 @@ button.step:hover .step__no { color: inherit; }
   .page__head, .page__main, .page__foot { padding: 0 var(--s-2); overflow: visible; }
   .page__head { padding: var(--s-2) var(--s-2) 0; }
   .page__body { padding-top: var(--s-4); }
-  .topbar__right { margin-left: 0; }
+  .topbar { flex-wrap: wrap; column-gap: var(--s-2); }
+  .topbar__tabs { order: 3; flex-basis: 100%; }
+  .topbar__tab { min-height: 36px; }
+  .topbar__tab:first-child { padding-left: 0; }
   .steps { grid-template-columns: 1fr; }
   .step + .step { border-left: 0; border-top: var(--bw) solid var(--c-line); }
   .task { grid-template-columns: 24px minmax(0, 1fr) auto; }

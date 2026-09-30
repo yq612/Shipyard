@@ -302,7 +302,6 @@ function PlanStep({ country, envNames, onBack }: { country: CountryView; envName
     onSuccess: ({ id }) => {
       void queryClient.invalidateQueries({ queryKey: ["config"] });
       void queryClient.invalidateQueries({ queryKey: ["deployments"] });
-      void queryClient.invalidateQueries({ queryKey: ["status"] });
       navigate(`/deployments/${id}`);
     },
     onError: () => {
