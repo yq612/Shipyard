@@ -1,6 +1,6 @@
 # Downstream builds run on exactly these versions; bump them deliberately.
 # Other node versions for individual projects: config.yaml → runtimes.node.
-ARG BUN_VERSION=1.3.14
+ARG BUN_VERSION=1.4.2
 ARG NODE_VERSION=22.23.3
 
 # ---- build the web UI ----
