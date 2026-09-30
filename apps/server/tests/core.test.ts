@@ -1,7 +1,7 @@
 // Ported from the CLI's builder / git / deployer / pipeline / notify tests,
 // adapted to the new signatures (log callbacks, cancellation, commit info).
 import { describe, expect, test } from "bun:test";
-import { parseCommand, runBuild, runInstall } from "../src/core/builder.ts";
+import { parseCommand, runBuild, runInstall, toolchainEnv } from "../src/core/builder.ts";
 import {
   buildRemoteScript,
   buildTarArgs,
@@ -10,7 +10,7 @@ import {
   upload,
   type SshClient,
 } from "../src/core/deployer.ts";
-import { buildCloneArgs, clone, headCommit, parseHeadCommit } from "../src/core/git.ts";
+import { buildCloneArgs, clone, gitAuthEnv, headCommit, parseHeadCommit } from "../src/core/git.ts";
 import { buildFeishuCard, genSign, sendFeishu, type CardInput } from "../src/core/notify.ts";
 import { buildUploadTarget, runPipeline, type PipelineDeps } from "../src/core/pipeline.ts";
 import { CancelledError, CommandError, spawnRunner } from "../src/core/process.ts";
@@ -59,6 +59,29 @@ describe("git", () => {
     };
     await clone("https://x/y.git", "br", "/tmp/dest", {}, run);
     expect(calls).toEqual([{ file: "git", args: buildCloneArgs("https://x/y.git", "br", "/tmp/dest") }]);
+  });
+
+  test("clone hands a token to git through the environment, never the arguments", async () => {
+    const calls: { args: string[]; env?: Record<string, string> }[] = [];
+    const run: Runner = async (_file, args, opts) => {
+      calls.push({ args, env: opts?.env });
+      return { stdout: "", stderr: "", exitCode: 0 };
+    };
+    await clone("https://codeup.example.com/y.git", "br", "/tmp/dest", { auth: { username: "me", token: "s3cret" } }, run);
+    expect(calls[0]!.args.join(" ")).not.toContain("s3cret");
+    expect(calls[0]!.env).toMatchObject({ GIT_CONFIG_VALUE_0: "", SHIPYARD_GIT_USERNAME: "me", SHIPYARD_GIT_TOKEN: "s3cret" });
+    expect(gitAuthEnv({ username: "me", token: "s3cret" }).GIT_CONFIG_VALUE_1).not.toContain("s3cret");
+  });
+
+  test("the credential helper really answers git with the token", async () => {
+    const helper = gitAuthEnv({ username: "me", token: "s3cret" }).GIT_CONFIG_VALUE_1!.slice(1); // drop git's leading "!"
+    const { stdout } = await spawnRunner("sh", ["-c", `${helper} get`], { env: { SHIPYARD_GIT_USERNAME: "me", SHIPYARD_GIT_TOKEN: "s3cret" } });
+    expect(stdout).toBe("username=me\npassword=s3cret\n");
+  });
+
+  test("toolchainEnv puts a pinned node first on PATH and leaves the default alone", () => {
+    expect(toolchainEnv({ node: null, nodeBin: null }, "/usr/bin")).toEqual({});
+    expect(toolchainEnv({ node: "node20", nodeBin: "/opt/n20/bin" }, "/usr/bin")).toEqual({ PATH: "/opt/n20/bin:/usr/bin" });
   });
 
   test("headCommit parses sha and subject", async () => {
@@ -349,7 +372,7 @@ describe("notify", () => {
   const input = (over: Partial<CardInput> = {}): CardInput => ({
     deploymentId: 42,
     status: "succeeded",
-    countryName: "印尼",
+    scope: "充值网站 · 印尼",
     operatorName: "张三",
     operatorIp: "10.8.1.2",
     totalMs: 125000,

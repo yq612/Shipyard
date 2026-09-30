@@ -2,7 +2,7 @@ import type { CommitInfo, EnvOutcome, LogStream, Stage, StageResult } from "@shi
 import { STAGE_NAMES, formatDuration, shortSha } from "@shipyard/shared";
 import { CancelledError } from "./process.ts";
 import { releaseTempPath, removeTempPath, trackTempPath } from "./temp.ts";
-import type { EnvSpec, LogFn, SshCredentials, UploadTarget } from "./types.ts";
+import type { EnvSpec, GitAuth, LogFn, SshCredentials, Toolchain, UploadTarget } from "./types.ts";
 
 export function buildUploadTarget(spec: EnvSpec, creds: SshCredentials): UploadTarget {
   return { ...creds, host: spec.host, server: spec.server, remotePath: spec.remotePath };
@@ -14,10 +14,10 @@ export interface StageContext {
 }
 
 export interface PipelineDeps {
-  clone: (repoUrl: string, branch: string, dest: string, ctx: StageContext) => Promise<void>;
+  clone: (repoUrl: string, branch: string, dest: string, ctx: StageContext, auth: GitAuth | null) => Promise<void>;
   headCommit: (dir: string, ctx: StageContext) => Promise<CommitInfo | undefined>;
-  runInstall: (cwd: string, installCmd: string, ctx: StageContext) => Promise<void>;
-  runBuild: (cwd: string, buildCmd: string, dist: string, ctx: StageContext) => Promise<{ distPath: string }>;
+  runInstall: (cwd: string, installCmd: string, ctx: StageContext, toolchain: Toolchain) => Promise<void>;
+  runBuild: (cwd: string, buildCmd: string, dist: string, ctx: StageContext, toolchain: Toolchain) => Promise<{ distPath: string }>;
   upload: (distPath: string, target: UploadTarget, ctx: StageContext) => Promise<void>;
   mkdtemp: () => Promise<string>;
   rmrf: (p: string) => Promise<void>;
@@ -107,7 +107,7 @@ export async function runPipeline(
     let distPath = "";
     const cont =
       (await step("clone", async (ctx) => {
-        await deps.clone(spec.repoUrl, spec.branch, tmp!, ctx);
+        await deps.clone(spec.repoUrl, spec.branch, tmp!, ctx, spec.gitAuth);
         commit = await deps.headCommit(tmp!, ctx).catch(() => undefined);
         if (commit) {
           const c = commit;
@@ -115,9 +115,9 @@ export async function runPipeline(
           ctx.log("system", `提交 ${shortSha(c.sha)}「${c.message}」`);
         }
       })) &&
-      (await step("install", (ctx) => deps.runInstall(tmp!, spec.installCmd, ctx))) &&
+      (await step("install", (ctx) => deps.runInstall(tmp!, spec.installCmd, ctx, spec.toolchain))) &&
       (await step("build", async (ctx) => {
-        const r = await deps.runBuild(tmp!, spec.buildCmd, spec.dist, ctx);
+        const r = await deps.runBuild(tmp!, spec.buildCmd, spec.dist, ctx, spec.toolchain);
         distPath = r.distPath;
       }));
     if (cont) {

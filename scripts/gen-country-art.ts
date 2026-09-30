@@ -2,14 +2,14 @@
 //   apps/web/src/assets/flags/<code>.svg — 4:3 flag from flag-icons (MIT, see LICENSE there)
 //   apps/web/src/assets/maps/<code>.svg  — 24×24 pixel silhouette from Natural Earth 1:50m (public domain)
 //
-//   bun run scripts/gen-country-art.ts            # every country code in config.example.yaml + data/config.yaml
+//   bun run scripts/gen-country-art.ts            # every country code in config.example/ and data/ (incl. projects/)
 //   bun run scripts/gen-country-art.ts PK TH      # just these
 //
 // Only what the config uses is vendored, so the build doesn't ship ~270 flags.
 // A country without art still gets a card, just without the pictures.
 // Silhouettes keep the outer rings of islands ≥1% of the country's area and
 // scale longitudes by cos(mid-latitude) so shapes aren't stretched.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const NE_URL = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_50m_admin_0_countries.geojson";
@@ -27,8 +27,12 @@ type Feature = { properties: Record<string, string | null>; geometry: Geometry }
 
 function configCodes(): string[] {
   const codes = new Set<string>();
-  for (const file of ["config.example.yaml", "data/config.yaml"]) {
-    const path = join(ROOT, file);
+  const files = ["config.example", "data"].flatMap((dir) => {
+    const projects = join(ROOT, dir, "projects");
+    const inProjects = existsSync(projects) ? readdirSync(projects).filter((f) => f.endsWith(".yaml")).map((f) => join(projects, f)) : [];
+    return [join(ROOT, dir, "config.yaml"), ...inProjects];
+  });
+  for (const path of files) {
     if (!existsSync(path)) continue;
     for (const m of readFileSync(path, "utf8").matchAll(/^\s*code:\s*([A-Za-z]{2})\s*$/gm)) codes.add(m[1]!.toUpperCase());
   }

@@ -1,46 +1,14 @@
-# Shipyard 配置示例。复制到 data/config.yaml（或用 CONFIG_PATH 指定路径）后按需修改。
-# 服务运行时会热加载：每次发起发布前重新读取并校验，改环境、改白名单都不用重启。
+# 项目文件：data/projects/<项目 key>.yaml。文件名就是项目 key，会写进发布记录，定了就不要改。
+# 充值网站：按国家分组，发布目录按模板拼出来。
+name: 充值网站
+order: 10                   # 顶栏里的顺序，小的在前
+grouping: country           # country：先选国家再选环境；none：直接选环境
 
-server:
-  port: 8080
-  # 飞书卡片里「查看详情」的链接前缀；不填则卡片不带链接
-  # publicUrl: https://deploy.example.internal
-  maxConcurrent: 3          # 同时执行的环境数上限（install + build 很吃 CPU / 内存）
-  logRetentionDays: 30      # 发布记录和日志保留天数
+remotePathTemplate: "/home/topup-web/{server}/dist"   # 环境没写 remotePath 时，用 server 代入
 
-access:
-  allowIps:                 # 允许执行（发起 / 取消 / 重试）的 IP，支持 CIDR
-    - 127.0.0.1
-    - ::1
-    # - 203.0.113.10        # 示例：办公室出口 IP
-    # - 10.8.0.0/16         # 示例：VPN 网段
-  protectReads: false       # true：查看类接口也要求在白名单内
-  # 服务前面有反向代理时设为 true（compose 部署时前面是 Caddy，见 deploy/caddy/Caddyfile）。
-  # 经代理转发的请求不会被当成代理自己的地址（通常是白名单里的 127.0.0.1）：没开 trustProxy、
-  # 或代理没带 X-Forwarded-For，来源 IP 都按「未知」处理，不能执行，服务日志会提示原因。
-  trustProxy: false
-  proxyIps: [127.0.0.1, ::1] # 反向代理所在的地址，只信任它们转发来的 X-Forwarded-For
-  # 允许的来源（Origin / Host）。留空 = 只允许同源访问，任何 Host 都行（适合开发或直接用 IP 访问）
-  # 上线时务必填写对外地址，防止 DNS 重绑定
-  allowedOrigins: []
-  #  - https://deploy.example.internal
+# build:                    # 只写和 config.yaml 里默认值不同的字段
+#   node: node20
 
-ssh:
-  user: root
-  port: 22
-  privateKeyPath: ssh/deploy.pem   # 相对路径以本配置文件所在目录为准；权限请设为 0600
-  remotePathTemplate: "/home/topup-web/{server}/dist"
-  keepPrevious: true        # 替换时把旧版本保留为 dist.prev，方便手工回滚
-
-build:
-  install: "bun install"
-  build: "bun run build"
-  dist: "dist"
-
-# 仓库是私有的，服务端 git clone 不能交互输密码，凭据要写进地址：
-#   https://oauth2:<令牌>@codeup.aliyun.com/<路径>.git
-# 令牌在 Codeup → 头像 → 个人设置 → 个人访问令牌 创建，只勾 read_repository，并设到期时间。
-# 日志、数据库、接口里的地址都会经过 redactUrl 脱敏；带令牌的地址只写在 data/config.yaml，不要写回本文件。
 repos:
   out: "https://codeup.aliyun.com/667a81f4fd3acd0ce9015eca/topupasean-out/topupasean-game-website.git"
   lab: "https://codeup.aliyun.com/667a81f4fd3acd0ce9015eca/AIAgent/topup-lab.git"
@@ -101,10 +69,3 @@ countries:
     code: KR
     environments:
       - { name: Baropin 环境, branch: kr/Baropin, server: baropin, host: 47.236.145.178, repo: pro }
-
-notify:
-  feishu:
-    # 飞书自定义机器人 webhook；留空则不推送。也可以用环境变量 FEISHU_WEBHOOK 覆盖
-    webhook: ""
-    # 仅当机器人开启「签名校验」时填写（或用环境变量 FEISHU_SECRET）
-    # secret: ""

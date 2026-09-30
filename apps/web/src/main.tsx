@@ -9,7 +9,7 @@ import { PageHead } from "./components/ui.tsx";
 import { pollStopped } from "./lib/poll.ts";
 import { DeploymentDetail } from "./pages/DeploymentDetail.tsx";
 import { Deployments } from "./pages/Deployments.tsx";
-import { NewDeployment } from "./pages/NewDeployment.tsx";
+import { NewDeployment, ProjectRedirect } from "./pages/NewDeployment.tsx";
 import "./styles/phosphor.css";
 import "./styles/app.css";
 
@@ -33,7 +33,8 @@ const router = createBrowserRouter([
   {
     element: <Layout />,
     children: [
-      { path: "/", element: <NewDeployment /> },
+      { path: "/", element: <ProjectRedirect /> },
+      { path: "/p/:project", element: <NewDeployment /> },
       { path: "/deployments", element: <Deployments /> },
       { path: "/deployments/:id", element: <DeploymentDetail /> },
       { path: "*", element: <NotFound /> },

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import type { DeploymentMessage } from "../src/service/deployments.ts";
-import { OPERATOR, setupService, until, type TestEnv } from "./helpers.ts";
+import { OPERATOR, setupService, until, type TestEnv, topup } from "./helpers.ts";
 
 let env: TestEnv | undefined;
 const restore: Array<() => void> = [];
@@ -49,14 +49,14 @@ describe("service resource cleanup after observer failures", () => {
       write(id, idx, patch);
     });
     restore.push(() => spy.mockRestore());
-    const { id } = env.service.create("PK", ["QuickBuy 环境"], OPERATOR);
+    const { id } = env.service.create(topup("PK", ["QuickBuy 环境"]), OPERATOR);
     const rt = internals(env.service).runtimes.get(id)!;
     await finished(env, id);
     expect(rt.controllers.size).toBe(0);
     expect(env.pipeline.calls).toEqual([]);
     expect(env.service.detail(id)!.state.tasks[0]!.status).toBe("interrupted");
     expect(env.service.status().shuttingDown).toBe(true);
-    expect(() => env!.service.create("PK", ["QuickBuy 环境"], OPERATOR)).toThrow("发布记录保存异常");
+    expect(() => env!.service.create(topup("PK", ["QuickBuy 环境"]), OPERATOR)).toThrow("发布记录保存异常");
     expect(warnings.join("\n")).toContain("https://***@repo.invalid/x");
     expect(warnings.join("\n")).not.toContain("private-token");
   });
@@ -70,7 +70,7 @@ describe("service resource cleanup after observer failures", () => {
       append(ref, idx, line);
     });
     restore.push(() => spy.mockRestore());
-    const { id } = env.service.create("PK", ["QuickBuy 环境"], OPERATOR);
+    const { id } = env.service.create(topup("PK", ["QuickBuy 环境"]), OPERATOR);
     const rt = internals(env.service).runtimes.get(id)!;
     env.pipeline.pass("PK-QuickBuy");
     await finished(env, id);
@@ -92,7 +92,7 @@ describe("service resource cleanup after observer failures", () => {
       write(id, idx, patch);
     });
     restore.push(() => spy.mockRestore());
-    const { id } = env.service.create("PK", ["QuickBuy 环境"], OPERATOR);
+    const { id } = env.service.create(topup("PK", ["QuickBuy 环境"]), OPERATOR);
     const rt = internals(env.service).runtimes.get(id)!;
     const messages: DeploymentMessage[] = [];
     env.service.subscribe(id, (message) => { messages.push(message); });
@@ -105,7 +105,7 @@ describe("service resource cleanup after observer failures", () => {
     expect(messages.at(-1)!.type).toBe("end");
     expect(env.pipeline.calls.filter((call) => call.endsWith(":upload"))).toHaveLength(1);
     expect(env.service.status().shuttingDown).toBe(true);
-    expect(() => env!.service.create("PK", ["QuickBuy 环境"], OPERATOR)).toThrow("发布记录保存异常");
+    expect(() => env!.service.create(topup("PK", ["QuickBuy 环境"]), OPERATOR)).toThrow("发布记录保存异常");
     expect(() => env!.service.retry(id, OPERATOR)).toThrow();
   });
 
@@ -118,7 +118,7 @@ describe("service resource cleanup after observer failures", () => {
       append(id, seq, event);
     });
     restore.push(() => spy.mockRestore());
-    const { id } = env.service.create("PK", ["QuickBuy 环境"], OPERATOR);
+    const { id } = env.service.create(topup("PK", ["QuickBuy 环境"]), OPERATOR);
     env.pipeline.pass("PK-QuickBuy");
     await finished(env, id);
     expect(env.service.detail(id)!.state.tasks[0]!.status).toBe("done");
@@ -136,7 +136,7 @@ describe("service resource cleanup after observer failures", () => {
       write(id, patch);
     });
     restore.push(() => spy.mockRestore());
-    const { id } = env.service.create("PK", ["QuickBuy 环境"], OPERATOR);
+    const { id } = env.service.create(topup("PK", ["QuickBuy 环境"]), OPERATOR);
     const messages: DeploymentMessage[] = [];
     env.service.subscribe(id, (message) => { messages.push(message); });
     env.pipeline.pass("PK-QuickBuy");
@@ -159,7 +159,7 @@ describe("service resource cleanup after observer failures", () => {
       end(id, idx);
     });
     restore.push(() => spy.mockRestore());
-    const { id } = env.service.create("PK", ["QuickBuy 环境"], OPERATOR);
+    const { id } = env.service.create(topup("PK", ["QuickBuy 环境"]), OPERATOR);
     env.pipeline.pass("PK-QuickBuy");
     await finished(env, id);
     expect(calls).toBe(2);

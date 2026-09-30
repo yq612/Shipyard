@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { replayProgress } from "@shipyard/shared";
 import { ServiceError } from "../src/service/errors.ts";
 import { Scheduler } from "../src/service/scheduler.ts";
-import { CONFIG_YAML, OPERATOR, setupService, until, type TestEnv } from "./helpers.ts";
+import { CONFIG_YAML, OPERATOR, setupService, until, type TestEnv, topup } from "./helpers.ts";
 
 let env: TestEnv;
 afterEach(() => env?.cleanup());
@@ -46,7 +46,7 @@ describe("Scheduler", () => {
 describe("DeploymentService", () => {
   test("happy path: events, env rows, commit, logs, deployment status, notification", async () => {
     env = setupService({ yaml: WITH_WEBHOOK });
-    const { id } = env.service.create("PK", ["QuickBuy 环境"], OPERATOR);
+    const { id } = env.service.create(topup("PK", ["QuickBuy 环境"]), OPERATOR);
     expect(env.repo.summary(id)).toMatchObject({ status: "queued", operatorName: "张三", envCount: 1 });
 
     env.pipeline.pass("PK-QuickBuy");
@@ -80,7 +80,7 @@ describe("DeploymentService", () => {
 
   test("respects maxConcurrent: extra envs wait in the queue", async () => {
     env = setupService(); // maxConcurrent: 2
-    const { id } = env.service.create("PK", ["QuickBuy 环境", "Kbunique 环境", "Saink 环境"], OPERATOR);
+    const { id } = env.service.create(topup("PK", ["QuickBuy 环境", "Kbunique 环境", "Saink 环境"]), OPERATOR);
     await until(() => env.pipeline.calls.length === 2);
     expect(env.service.status()).toMatchObject({ runningEnvs: 2, queuedEnvs: 1 });
     expect(statuses(env, id)).toEqual(["running", "running", "queued"]);
@@ -95,29 +95,29 @@ describe("DeploymentService", () => {
 
   test("environment lock: a busy directory is refused with 409 and who holds it", async () => {
     env = setupService();
-    const first = env.service.create("PK", ["QuickBuy 环境"], OPERATOR);
-    const err = await expectError(() => env.service.create("PK", ["QuickBuy 环境", "Kbunique 环境"], OPERATOR), "ENV_BUSY");
+    const first = env.service.create(topup("PK", ["QuickBuy 环境"]), OPERATOR);
+    const err = await expectError(() => env.service.create(topup("PK", ["QuickBuy 环境", "Kbunique 环境"]), OPERATOR), "ENV_BUSY");
     expect(err.status).toBe(409);
     expect(err.details).toEqual([{ deploymentId: first.id, envIdx: 0, envName: "QuickBuy 环境", requestedEnv: "QuickBuy 环境" }]);
 
     // same host, different directory → allowed
-    const other = env.service.create("PK", ["Saink 环境"], OPERATOR);
+    const other = env.service.create(topup("PK", ["Saink 环境"]), OPERATOR);
     expect(other.id).toBeGreaterThan(first.id);
 
     const view = env.service.configView();
-    const pk = view.countries.find((c) => c.code === "PK")!;
+    const pk = view.projects[0]!.countries.find((c) => c.code === "PK")!;
     expect(pk.busyCount).toBe(2);
     expect(pk.environments.find((e) => e.name === "QuickBuy 环境")!.busy?.deploymentId).toBe(first.id);
 
     env.pipeline.pass("PK-QuickBuy");
     await until(() => !env.service.isActive(first.id));
     expect(env.service.holderOf("1.1.1.1", "/home/topup-web/quickbuypk/dist")).toBeNull();
-    expect(env.service.create("PK", ["QuickBuy 环境"], OPERATOR).id).toBeGreaterThan(other.id);
+    expect(env.service.create(topup("PK", ["QuickBuy 环境"]), OPERATOR).id).toBeGreaterThan(other.id);
   });
 
   test("a failing stage marks the env failed, records the summary, others continue", async () => {
     env = setupService();
-    const { id } = env.service.create("PK", ["QuickBuy 环境", "Kbunique 环境"], OPERATOR);
+    const { id } = env.service.create(topup("PK", ["QuickBuy 环境", "Kbunique 环境"]), OPERATOR);
     env.pipeline.open("PK-QuickBuy", "clone");
     env.pipeline.fail("PK-QuickBuy", "install", "npm ERR! https://oauth2:tok@codeup.example.com boom");
     env.pipeline.pass("PK-kbunique");
@@ -134,7 +134,7 @@ describe("DeploymentService", () => {
 
   test("cancel: queued envs are dropped at once, running envs are aborted", async () => {
     env = setupService();
-    const { id } = env.service.create("PK", ["QuickBuy 环境", "Kbunique 环境", "Saink 环境"], OPERATOR);
+    const { id } = env.service.create(topup("PK", ["QuickBuy 环境", "Kbunique 环境", "Saink 环境"]), OPERATOR);
     await until(() => env.pipeline.calls.length === 2);
 
     expect(env.service.cancel(id, 2)).toEqual({ cancelled: 1 }); // still queued
@@ -157,7 +157,7 @@ describe("DeploymentService", () => {
 
   test("cancelling everything frees the locks and ends as cancelled", async () => {
     env = setupService();
-    const { id } = env.service.create("PK", ["QuickBuy 环境"], OPERATOR);
+    const { id } = env.service.create(topup("PK", ["QuickBuy 环境"]), OPERATOR);
     await until(() => env.pipeline.calls.length === 1);
     env.service.cancel(id);
     await until(() => !env.service.isActive(id));
@@ -167,7 +167,7 @@ describe("DeploymentService", () => {
 
   test("retry re-runs only failed / cancelled envs as a new deployment", async () => {
     env = setupService();
-    const { id } = env.service.create("PK", ["QuickBuy 环境", "Kbunique 环境"], OPERATOR);
+    const { id } = env.service.create(topup("PK", ["QuickBuy 环境", "Kbunique 环境"]), OPERATOR);
     env.pipeline.fail("PK-QuickBuy", "clone", "no such branch");
     env.pipeline.pass("PK-kbunique");
     await until(() => !env.service.isActive(id));
@@ -180,12 +180,12 @@ describe("DeploymentService", () => {
 
   test("create validates input and the config", async () => {
     env = setupService();
-    await expectError(() => env.service.create("XX", ["a"], OPERATOR), "NOT_FOUND");
-    await expectError(() => env.service.create("PK", [], OPERATOR), "BAD_REQUEST");
-    await expectError(() => env.service.create("PK", ["Nope"], OPERATOR), "NOT_FOUND");
+    await expectError(() => env.service.create(topup("XX", ["a"]), OPERATOR), "NOT_FOUND");
+    await expectError(() => env.service.create(topup("PK", []), OPERATOR), "BAD_REQUEST");
+    await expectError(() => env.service.create(topup("PK", ["Nope"]), OPERATOR), "NOT_FOUND");
 
     env.writeConfig("ssh: [");
-    const err = await expectError(() => env.service.create("PK", ["QuickBuy 环境"], OPERATOR), "CONFIG_INVALID");
+    const err = await expectError(() => env.service.create(topup("PK", ["QuickBuy 环境"]), OPERATOR), "CONFIG_INVALID");
     expect(err.status).toBe(422);
     expect(env.service.configView().configError).toContain("YAML");
   });
@@ -193,13 +193,13 @@ describe("DeploymentService", () => {
   test("hot reload: config edits apply to the next deployment", async () => {
     env = setupService();
     env.writeConfig(CONFIG_YAML.replace("PK-QuickBuy", "PK-QuickBuy-v2"));
-    const { id } = env.service.create("PK", ["QuickBuy 环境"], OPERATOR);
+    const { id } = env.service.create(topup("PK", ["QuickBuy 环境"]), OPERATOR);
     expect(env.repo.envs(id)[0]!.branch).toBe("PK-QuickBuy-v2");
   });
 
   test("plan lists concrete commands without leaking credentials", () => {
     env = setupService();
-    const plan = env.service.plan("PK", ["QuickBuy 环境"]);
+    const plan = env.service.plan(topup("PK", ["QuickBuy 环境"]));
     expect(plan.maxConcurrent).toBe(2);
     const e = plan.envs[0]!;
     expect(e.repoUrl).toBe("https://***@codeup.example.com/out.git");
@@ -211,7 +211,7 @@ describe("DeploymentService", () => {
 
   test("recover marks leftovers from a crashed process as interrupted", async () => {
     env = setupService();
-    const { id } = env.service.create("PK", ["QuickBuy 环境", "Kbunique 环境"], OPERATOR);
+    const { id } = env.service.create(topup("PK", ["QuickBuy 环境", "Kbunique 环境"]), OPERATOR);
     await until(() => env.pipeline.calls.length === 2);
 
     // simulate a restart: a fresh service over the same database
@@ -227,10 +227,10 @@ describe("DeploymentService", () => {
 
   test("shutdown interrupts queued envs and waits for running ones", async () => {
     env = setupService();
-    const { id } = env.service.create("PK", ["QuickBuy 环境", "Kbunique 环境", "Saink 环境"], OPERATOR);
+    const { id } = env.service.create(topup("PK", ["QuickBuy 环境", "Kbunique 环境", "Saink 环境"]), OPERATOR);
     await until(() => env.pipeline.calls.length === 2);
     const done = env.service.shutdown(5000);
-    await expectError(() => env.service.create("MX", ["ZenLix 环境"], OPERATOR), "SHUTTING_DOWN");
+    await expectError(() => env.service.create(topup("MX", ["ZenLix 环境"]), OPERATOR), "SHUTTING_DOWN");
     expect(statuses(env, id)[2]).toBe("interrupted");
     env.pipeline.pass("PK-QuickBuy");
     env.pipeline.pass("PK-kbunique");
@@ -241,7 +241,7 @@ describe("DeploymentService", () => {
 
   test("subscribers get progress, status and end messages", async () => {
     env = setupService();
-    const { id } = env.service.create("PK", ["QuickBuy 环境"], OPERATOR);
+    const { id } = env.service.create(topup("PK", ["QuickBuy 环境"]), OPERATOR);
     const types: string[] = [];
     env.service.subscribe(id, (msg) => types.push(msg.type));
     env.pipeline.pass("PK-QuickBuy");
@@ -253,8 +253,8 @@ describe("DeploymentService", () => {
 
   test("list filters by country, env and status", async () => {
     env = setupService();
-    const a = env.service.create("PK", ["QuickBuy 环境"], OPERATOR);
-    env.service.create("MX", ["ZenLix 环境"], OPERATOR);
+    const a = env.service.create(topup("PK", ["QuickBuy 环境"]), OPERATOR);
+    env.service.create(topup("MX", ["ZenLix 环境"]), OPERATOR);
     env.pipeline.pass("PK-QuickBuy");
     await until(() => !env.service.isActive(a.id));
 
@@ -264,7 +264,65 @@ describe("DeploymentService", () => {
     expect(env.service.list({ status: "succeeded" }).items.map((d) => d.id)).toEqual([a.id]);
     expect(env.service.list({ pageSize: 1, page: 2 }).items).toHaveLength(1);
 
-    const last = env.service.configView().countries[0]!.environments[0]!.last;
+    const last = env.service.configView().projects[0]!.countries[0]!.environments[0]!.last;
     expect(last).toMatchObject({ deploymentId: a.id, status: "done", commitSha: "a1b2c3d4e5f6" });
+  });
+});
+
+describe("projects", () => {
+  const OFFICIAL = `name: 官网
+repos: { site: "https://codeup.example.com/site.git" }
+build: { build: "bun run build --mode production" }
+environments:
+  - { name: 主站, branch: main, host: 3.3.3.3, repo: site, remotePath: /home/site-web/dist/ }
+  - { name: 后台, branch: main, host: 3.3.3.3, repo: site, remotePath: /home/site-admin/dist, build: { build: "vite build" } }
+`;
+  const WITH_GIT = CONFIG_YAML.replace("repos:", "git:\n  credentials:\n    - { host: codeup.example.com, username: me, token: tok-123 }\nrepos:");
+
+  test("an ungrouped project deploys without a country and keeps its own build settings", async () => {
+    env = setupService({ yaml: WITH_GIT });
+    env.writeProject("official", OFFICIAL);
+    const view = env.service.configView().projects.find((p) => p.key === "official")!;
+    expect(view).toMatchObject({ grouping: "none", envCount: 2, countries: [], error: null });
+    expect(view.environments.map((e) => e.remotePath)).toEqual(["/home/site-web/dist", "/home/site-admin/dist"]);
+
+    const plan = env.service.plan({ project: "official", envNames: ["主站", "后台"] });
+    expect(plan).toMatchObject({ project: "official", projectName: "官网", countryCode: null, countryName: null });
+    expect(plan.envs.map((e) => e.steps[2]!.commands[0])).toEqual(["bun run build --mode production", "vite build"]);
+    expect(plan.envs[0]!.steps[0]!.note).toContain("git.credentials");
+    expect(JSON.stringify(plan)).not.toContain("tok-123");
+
+    const { id } = env.service.create({ project: "official", envNames: ["主站"] }, OPERATOR);
+    expect(env.repo.summary(id)).toMatchObject({ projectKey: "official", projectName: "官网", countryCode: null, countryName: null });
+    expect(env.repo.envs(id)[0]).toMatchObject({ server: "site-web", remotePath: "/home/site-web/dist", buildCmd: "bun run build --mode production", node: null });
+    env.pipeline.pass("main");
+    await until(() => !env.service.isActive(id));
+
+    expect(env.service.list({ project: "official" }).items.map((d) => d.id)).toEqual([id]);
+    expect(env.service.list({ project: "topup" }).total).toBe(0);
+    const retry = await expectError(() => env.service.retry(id, OPERATOR), "BAD_REQUEST");
+    expect(retry.message).toContain("没有失败");
+  });
+
+  test("the grouping decides whether a country is required", async () => {
+    env = setupService();
+    env.writeProject("official", OFFICIAL);
+    await expectError(() => env.service.create({ project: "topup", envNames: ["QuickBuy 环境"] }, OPERATOR), "BAD_REQUEST");
+    await expectError(() => env.service.create({ project: "nope", envNames: ["x"] }, OPERATOR), "NOT_FOUND");
+    await expectError(() => env.service.create({ project: "official", envNames: ["QuickBuy 环境"] }, OPERATOR), "NOT_FOUND");
+  });
+
+  test("a broken project file refuses only that project, and keeps showing its last good environments", async () => {
+    env = setupService();
+    env.writeProject("official", OFFICIAL);
+    expect(env.service.configView().projects.map((p) => p.key)).toEqual(["topup", "official"]);
+    env.writeProject("official", OFFICIAL.replace("repo: site, remotePath: /home/site-web/dist/", "repo: gone, remotePath: /x/dist"));
+
+    const err = await expectError(() => env.service.create({ project: "official", envNames: ["主站"] }, OPERATOR), "CONFIG_INVALID");
+    expect(err.message).toContain("repo=\"gone\"");
+    const view = env.service.configView();
+    expect(view.configError).toBeNull();
+    expect(view.projects.find((p) => p.key === "official")).toMatchObject({ envCount: 2, error: expect.stringContaining("gone") });
+    expect(env.service.create(topup("PK", ["QuickBuy 环境"]), OPERATOR).id).toBeGreaterThan(0);
   });
 });

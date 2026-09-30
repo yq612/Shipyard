@@ -1,7 +1,14 @@
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import { spawnRunner } from "./process.ts";
-import type { RunOptions, Runner } from "./types.ts";
+import type { RunOptions, Runner, Toolchain } from "./types.ts";
+
+// A pinned node goes first on PATH, so `node`, `npx` and every node-shebang
+// CLI that `bun run build` starts resolve to it.
+export function toolchainEnv(toolchain: Toolchain, basePath = process.env.PATH ?? ""): Record<string, string> {
+  if (!toolchain.nodeBin) return {};
+  return { PATH: basePath ? `${toolchain.nodeBin}${delimiter}${basePath}` : toolchain.nodeBin };
+}
 
 export function parseCommand(cmd: string): { file: string; args: string[] } {
   const parts = cmd.trim().split(/\s+/);

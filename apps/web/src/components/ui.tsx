@@ -31,11 +31,14 @@ export type StepState = "todo" | "current" | "done" | "error";
 
 export const WIZARD_STEPS = ["选择国家", "选择环境", "确认执行计划", "执行中", "完成"] as const;
 
-// ① 选择国家 → ② 选择环境 → ③ 确认执行计划 → ④ 执行中 → ⑤ 完成
-export function Steps({ states, onStep }: { states: StepState[]; onStep?: (index: number) => void }) {
+// ① 选择国家 / 项目 → ② 选择环境 → ③ 确认执行计划 → ④ 执行中 → ⑤ 完成
+// Ungrouped projects have no country step: `first` renames it, and it is not
+// a step one can go back to (the project is picked above the steps).
+export function Steps({ states, onStep, first }: { states: StepState[]; onStep?: (index: number) => void; first?: string }) {
   return (
     <ol className="steps" aria-label="发布步骤">
-      {WIZARD_STEPS.map((name, i) => {
+      {WIZARD_STEPS.map((step, i) => {
+        const name = i === 0 && first ? first : step;
         const state = states[i] ?? "todo";
         const cls = `step${state === "done" ? " is-done" : state === "current" ? " is-current" : state === "error" ? " is-error" : ""}`;
         const mark = state === "done" ? <CheckIcon /> : state === "error" ? "!" : String(i + 1);
@@ -45,9 +48,9 @@ export function Steps({ states, onStep }: { states: StepState[]; onStep?: (index
             <span className="step__name">{name}</span>
           </>
         );
-        const clickable = onStep && state === "done";
+        const clickable = onStep && state === "done" && !(i === 0 && first);
         return (
-          <li key={name} style={{ display: "contents" }} aria-current={state === "current" ? "step" : undefined}>
+          <li key={step} style={{ display: "contents" }} aria-current={state === "current" ? "step" : undefined}>
             {clickable ? (
               <button type="button" className={cls} onClick={() => onStep(i)} title={`回到「${name}」`}>{body}</button>
             ) : (

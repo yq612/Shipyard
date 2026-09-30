@@ -1,10 +1,11 @@
-import { mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { PipelineDeps, StageContext } from "../src/core/pipeline.ts";
 import { CancelledError } from "../src/core/process.ts";
 import { ConfigStore, parseConfig } from "../src/core/config.ts";
 import type { AppConfig, EnvSpec } from "../src/core/types.ts";
+import type { PlanRequest } from "@shipyard/shared";
 import { DeploymentService } from "../src/service/deployments.ts";
 import { openDatabase } from "../src/store/db.ts";
 import { LogStore } from "../src/store/logs.ts";
@@ -52,7 +53,14 @@ export const SPEC: EnvSpec = {
   installCmd: "bun install",
   buildCmd: "bun run build",
   dist: "dist",
+  toolchain: { node: null, nodeBin: null },
+  gitAuth: null,
 };
+
+// CONFIG_YAML is the single-project (legacy) format, which loads as project "topup".
+export function topup(countryCode: string, envNames: string[]): PlanRequest {
+  return { project: "topup", countryCode, envNames };
+}
 
 export function testConfig(yaml = CONFIG_YAML): AppConfig {
   return parseConfig(yaml, "/cfg");
@@ -138,6 +146,7 @@ export interface TestEnv {
   pipeline: FakePipeline;
   notified: { card: FeishuCard; webhook: string }[];
   writeConfig(yaml: string): void;
+  writeProject(key: string, yaml: string): void; // projects/<key>.yaml next to config.yaml
   cleanup(): void;
 }
 
@@ -145,11 +154,16 @@ export function setupService(opts: { yaml?: string; notify?: (card: FeishuCard) 
   const dir = mkdtempSync(join(tmpdir(), "shipyard-test-"));
   const configPath = join(dir, "config.yaml");
   let version = 0;
-  const writeConfig = (yaml: string) => {
-    writeFileSync(configPath, yaml);
+  const write = (path: string, yaml: string) => {
+    writeFileSync(path, yaml);
     // make sure the mtime-based change detection notices even same-millisecond writes
     const t = new Date(Date.now() + ++version * 1000);
-    utimesSync(configPath, t, t);
+    utimesSync(path, t, t);
+  };
+  const writeConfig = (yaml: string) => write(configPath, yaml);
+  const writeProject = (key: string, yaml: string) => {
+    mkdirSync(join(dir, "projects"), { recursive: true });
+    write(join(dir, "projects", `${key}.yaml`), yaml);
   };
   writeConfig(opts.yaml ?? CONFIG_YAML);
   writeFileSync(join(dir, "deploy.pem"), "PEM");
@@ -178,6 +192,7 @@ export function setupService(opts: { yaml?: string; notify?: (card: FeishuCard) 
     pipeline,
     notified,
     writeConfig,
+    writeProject,
     cleanup: () => {
       logs.closeAll();
       rmSync(dir, { recursive: true, force: true });

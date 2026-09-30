@@ -28,7 +28,7 @@ export interface CardEnv {
 export interface CardInput {
   deploymentId: number;
   status: DeploymentStatus;
-  countryName: string;
+  scope: string; // 「充值网站 · 印尼」, or just the project name
   operatorName?: string | null;
   operatorIp: string;
   totalMs?: number | null;
@@ -59,7 +59,7 @@ const ENV_ICONS: Record<TaskStatus, string> = {
 export function buildFeishuCard(input: CardInput): FeishuCard {
   const ok = input.envs.filter((e) => e.status === "done").length;
   const total = input.envs.length;
-  const title = `Shipyard #${input.deploymentId} · ${input.countryName} · ${DEPLOYMENT_STATUS_NAMES[input.status]}`;
+  const title = `Shipyard #${input.deploymentId} · ${input.scope} · ${DEPLOYMENT_STATUS_NAMES[input.status]}`;
   const operator = input.operatorName ? `${input.operatorName}（${input.operatorIp}）` : input.operatorIp;
 
   const lines: string[] = [

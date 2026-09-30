@@ -2,32 +2,50 @@ import { mkdtemp, readdir, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { redactUrl } from "@shipyard/shared";
-import { runBuild, runInstall } from "../core/builder.ts";
+import { runBuild, runInstall, toolchainEnv } from "../core/builder.ts";
 import { upload } from "../core/deployer.ts";
 import { buildCloneArgs, clone, headCommit } from "../core/git.ts";
+import { spawnRunner } from "../core/process.ts";
 import { isTempPathActive } from "../core/temp.ts";
 import type { PipelineDeps, StageContext } from "../core/pipeline.ts";
+import type { Toolchain } from "../core/types.ts";
 
 export const TMP_PREFIX = "shipyard-";
 
 const forward = (ctx: StageContext) => (stream: "stdout" | "stderr", line: string) => ctx.log(stream, redactUrl(line));
 
+async function version(file: string, env: Record<string, string>): Promise<string> {
+  try {
+    return (await spawnRunner(file, ["--version"], { env })).stdout.trim() || "?";
+  } catch {
+    return "未找到";
+  }
+}
+
+// Recorded at the start of every install so a log shows what built it.
+async function logToolchain(toolchain: Toolchain, ctx: StageContext): Promise<void> {
+  const env = toolchainEnv(toolchain);
+  const [node, bun] = await Promise.all([version("node", env), version("bun", env)]);
+  ctx.log("system", `运行时：node ${node}（${toolchain.node ?? "默认"}）· bun ${bun}`);
+}
+
 // The real side effects behind runPipeline: git, the build commands, SFTP.
 // Every command is announced as a `system` log line before it runs.
 export function realPipelineDeps(): PipelineDeps {
   return {
-    async clone(repoUrl, branch, dest, ctx) {
-      ctx.log("system", `$ git ${buildCloneArgs(redactUrl(repoUrl), branch, dest).join(" ")}`);
-      await clone(repoUrl, branch, dest, { signal: ctx.signal, onLine: forward(ctx) });
+    async clone(repoUrl, branch, dest, ctx, auth) {
+      ctx.log("system", `$ git ${buildCloneArgs(redactUrl(repoUrl), branch, dest).join(" ")}${auth ? "（使用 git.credentials 中的令牌）" : ""}`);
+      await clone(repoUrl, branch, dest, { signal: ctx.signal, onLine: forward(ctx), auth });
     },
     headCommit: (dir, ctx) => headCommit(dir, { signal: ctx.signal }),
-    async runInstall(cwd, installCmd, ctx) {
+    async runInstall(cwd, installCmd, ctx, toolchain) {
+      await logToolchain(toolchain, ctx);
       ctx.log("system", `$ ${installCmd}（目录：${cwd}）`);
-      await runInstall(cwd, installCmd, { signal: ctx.signal, onLine: forward(ctx) });
+      await runInstall(cwd, installCmd, { signal: ctx.signal, onLine: forward(ctx), env: toolchainEnv(toolchain) });
     },
-    async runBuild(cwd, buildCmd, dist, ctx) {
+    async runBuild(cwd, buildCmd, dist, ctx, toolchain) {
       ctx.log("system", `$ ${buildCmd}（目录：${cwd}）`);
-      return runBuild(cwd, buildCmd, dist, { signal: ctx.signal, onLine: forward(ctx) });
+      return runBuild(cwd, buildCmd, dist, { signal: ctx.signal, onLine: forward(ctx), env: toolchainEnv(toolchain) });
     },
     upload: (distPath, target, ctx) => upload(distPath, target, { signal: ctx.signal, log: ctx.log }),
     mkdtemp: () => mkdtemp(join(tmpdir(), TMP_PREFIX)),

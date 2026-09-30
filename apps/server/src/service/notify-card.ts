@@ -1,11 +1,12 @@
 import type { DeploymentEnvView, DeploymentSummary } from "@shipyard/shared";
+import { scopeLabel } from "@shipyard/shared";
 import type { CardInput } from "../core/notify.ts";
 
 export function buildCardInput(summary: DeploymentSummary, envs: DeploymentEnvView[], publicUrl?: string): CardInput {
   return {
     deploymentId: summary.id,
     status: summary.status,
-    countryName: summary.countryName,
+    scope: scopeLabel(summary.projectName, summary.countryName),
     operatorName: summary.operatorName,
     operatorIp: summary.operatorIp,
     totalMs: summary.startedAt && summary.finishedAt ? summary.finishedAt - summary.startedAt : null,

@@ -6,9 +6,10 @@ export type Stage = "clone" | "install" | "build" | "upload";
 export interface Environment {
   name: string;
   branch: string;
-  server: string;
+  server: string; // short label for the target; given, or the directory holding the build
   host: string;
-  repo: string; // key into the config's repos map
+  repo: string; // key into the project's repos map
+  remotePath: string; // resolved live directory on `host`
 }
 
 export interface Country {
@@ -16,6 +17,9 @@ export interface Country {
   code: string;
   environments: Environment[];
 }
+
+// How a project lists its environments: under countries, or as one flat list.
+export type Grouping = "country" | "none";
 
 export interface StageResult {
   stage: Stage;

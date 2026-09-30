@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import type { DeploymentList, DeploymentStatus, DeploymentSummary } from "@shipyard/shared";
-import { DEPLOYMENT_STATUS_NAMES, formatDuration, isDeploymentActive } from "@shipyard/shared";
+import { DEPLOYMENT_STATUS_NAMES, formatDuration, isDeploymentActive, projectEnvs } from "@shipyard/shared";
 import { api, errorMessage } from "../api.ts";
 import { Select } from "../components/Select.tsx";
 import { CrossIcon, DeploymentStatusTag, Loading, Notice, PageHead } from "../components/ui.tsx";
@@ -20,6 +20,7 @@ const RANGES: [string, string, number | null][] = [
 export function Deployments() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
+  const project = params.get("project") ?? "";
   const country = params.get("country") ?? "";
   const env = params.get("env") ?? "";
   const status = (params.get("status") ?? "") as DeploymentStatus | "";
@@ -28,13 +29,14 @@ export function Deployments() {
   const days = RANGES.find(([k]) => k === range)?.[2] ?? null;
 
   const config = useQuery({ queryKey: ["config"], queryFn: api.config });
-  const listKey = ["deployments", { country, env, status, range, page }];
+  const listKey = ["deployments", { project, country, env, status, range, page }];
   const list = useQuery({
     queryKey: listKey,
     queryFn: () =>
       api.list({
         page,
         pageSize: PAGE_SIZE,
+        project: project || undefined,
         country: country || undefined,
         env: env || undefined,
         status: status || undefined,
@@ -50,13 +52,25 @@ export function Deployments() {
     if (value) next.set(key, value);
     else next.delete(key);
     if (key !== "page") next.delete("page");
+    if (key === "project") {
+      next.delete("country");
+      next.delete("env");
+    }
     if (key === "country") next.delete("env");
     setParams(next);
   };
 
-  const envOptions = (config.data?.countries ?? [])
-    .filter((c) => !country || c.code === country)
-    .flatMap((c) => c.environments.map((e) => e.name));
+  const projects = config.data?.projects ?? [];
+  const picked = projects.find((p) => p.key === project);
+  // Country filter only for a project grouped by country.
+  const countries = picked?.grouping === "country" ? picked.countries : [];
+  const envOptions = [
+    ...new Set(
+      (picked ? [picked] : projects).flatMap((p) =>
+        country ? (p.countries.find((c) => c.code === country)?.environments ?? []) : projectEnvs(p),
+      ).map((e) => e.name),
+    ),
+  ];
   const totalPages = list.data ? Math.max(1, Math.ceil(list.data.total / PAGE_SIZE)) : 1;
 
   return (
@@ -65,14 +79,19 @@ export function Deployments() {
 
       <div className="filters">
         <Select
-          label="国家"
-          value={country}
-          onChange={(v) => set("country", v)}
-          options={[
-            { value: "", label: "全部国家" },
-            ...(config.data?.countries ?? []).map((c) => ({ value: c.code, label: c.name, hint: c.code })),
-          ]}
+          label="项目"
+          value={project}
+          onChange={(v) => set("project", v)}
+          options={[{ value: "", label: "全部项目" }, ...projects.map((p) => ({ value: p.key, label: p.name }))]}
         />
+        {countries.length > 0 && (
+          <Select
+            label="国家"
+            value={country}
+            onChange={(v) => set("country", v)}
+            options={[{ value: "", label: "全部国家" }, ...countries.map((c) => ({ value: c.code, label: c.name, hint: c.code }))]}
+          />
+        )}
         <Select
           label="环境"
           value={env}
@@ -86,7 +105,7 @@ export function Deployments() {
           options={[{ value: "", label: "全部状态" }, ...STATUSES.map((s) => ({ value: s, label: DEPLOYMENT_STATUS_NAMES[s] }))]}
         />
         <Select label="时间" value={range} onChange={(v) => set("range", v)} options={RANGES.map(([k, label]) => ({ value: k, label }))} />
-        {(country || env || status || range) && (
+        {(project || country || env || status || range) && (
           <button type="button" className="btn filters__clear" onClick={() => setParams(new URLSearchParams())}>
             <CrossIcon />
             清除筛选
@@ -103,7 +122,7 @@ export function Deployments() {
         <Loading />
       ) : list.data!.items.length === 0 ? (
         <div className="empty">
-          没有符合条件的发布记录。<Link className="link" to="/">新建发布</Link>
+          没有符合条件的发布记录。<Link className="link" to={project ? `/p/${project}` : "/"}>新建发布</Link>
         </div>
       ) : (
         <>
@@ -113,7 +132,7 @@ export function Deployments() {
                 <tr>
                   <th>任务</th>
                   <th>发起时间</th>
-                  <th>国家</th>
+                  <th>项目</th>
                   <th>环境</th>
                   <th>结果</th>
                   <th>操作人</th>
@@ -149,7 +168,10 @@ function Row({ d, onOpen }: { d: DeploymentSummary; onOpen: () => void }) {
         {d.retryOf && <span className="muted pixel"> ↻#{d.retryOf}</span>}
       </td>
       <td className="nowrap dim">{formatDateTime(d.createdAt)}</td>
-      <td className="nowrap">{d.countryName}</td>
+      <td className="nowrap">
+        {d.projectName}
+        {d.countryName && <span className="dim"> · {d.countryName}</span>}
+      </td>
       <td className="ellipsis" style={{ maxWidth: 320 }} title={d.envNames.join("、")}>{envs}</td>
       <td className="nowrap">
         <span className={d.doneCount === d.envCount ? "ok" : d.doneCount > 0 ? "warn" : "err"}>

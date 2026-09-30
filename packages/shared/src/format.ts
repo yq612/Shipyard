@@ -16,3 +16,13 @@ export function shortSha(sha: string | undefined | null): string {
 export function redactUrl(text: string): string {
   return text.replace(/\b([a-z][a-z0-9+.-]*:\/\/)[^\s/@]+@/gi, "$1***@");
 }
+
+// "充值网站 · 巴基斯坦", or just the project for ungrouped projects.
+export function scopeLabel(projectName: string, countryName: string | null): string {
+  return countryName ? `${projectName} · ${countryName}` : projectName;
+}
+
+// Every environment of a project, whichever way it is grouped.
+export function projectEnvs<E>(project: { countries: { environments: E[] }[]; environments: E[] }): E[] {
+  return [...project.environments, ...project.countries.flatMap((c) => c.environments)];
+}

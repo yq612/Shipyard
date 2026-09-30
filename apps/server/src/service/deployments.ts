@@ -11,9 +11,11 @@ import type {
   EnvBusyDetail,
   EnvHolder,
   EnvOutcome,
-  Environment,
+  EnvView,
   LogStream,
+  PlanRequest,
   PlanResponse,
+  ProjectView,
   ProgressEvent,
   ProgressState,
   ServerStatus,
@@ -26,14 +28,15 @@ import {
   redactUrl,
   reduceProgress,
   replayProgress,
+  scopeLabel,
 } from "@shipyard/shared";
-import { envSpecOf, findCountry, lockKey, type ConfigStore } from "../core/config.ts";
+import { envSpecOf, findCountry, findProject, lockKey, type ConfigStore } from "../core/config.ts";
 import { buildCardInput } from "./notify-card.ts";
 import { buildFeishuCard, sendFeishu, type FeishuCard, type SendResult } from "../core/notify.ts";
 import { buildCloneArgs } from "../core/git.ts";
 import { buildRemoteScript, buildTarArgs, stagingDir } from "../core/deployer.ts";
 import { runPipeline, type PipelineDeps } from "../core/pipeline.ts";
-import type { AppConfig, EnvSpec, SshCredentials } from "../core/types.ts";
+import type { AppConfig, CountryConfig, EnvConfig, EnvSpec, ProjectConfig, SshCredentials } from "../core/types.ts";
 import type { LogStore } from "../store/logs.ts";
 import type { Repository } from "../store/repo.ts";
 import { ServiceError } from "./errors.ts";
@@ -66,7 +69,6 @@ export interface ServiceDeps {
 interface Runtime {
   id: number;
   createdAt: number;
-  countryName: string;
   specs: EnvSpec[];
   creds: SshCredentials;
   state: ProgressState;
@@ -137,41 +139,53 @@ export class DeploymentService {
   configView(): ConfigView {
     const config = this.config.refresh();
     this.scheduler.setMax(config.server.maxConcurrent);
+    const envView = (env: EnvConfig): EnvView => ({
+      name: env.name,
+      branch: env.branch,
+      server: env.server,
+      host: env.host,
+      repo: env.repo,
+      remotePath: env.remotePath,
+      node: env.build.node,
+      busy: this.holderOf(env.host, env.remotePath),
+      last: this.repo.lastDeployOf(env.host, env.remotePath),
+    });
     return {
-      countries: config.countries.map((country) => {
-        const environments = country.environments.map((env) => {
-          const spec = envSpecOf(config, env);
-          return {
-            ...env,
-            remotePath: spec.remotePath,
-            busy: this.holderOf(spec.host, spec.remotePath),
-            last: this.repo.lastDeployOf(spec.host, spec.remotePath),
-          };
+      projects: config.projects.map((project): ProjectView => {
+        const countries = project.countries.map((country) => {
+          const environments = country.environments.map(envView);
+          return { code: country.code, name: country.name, environments, busyCount: environments.filter((e) => e.busy).length };
         });
+        const environments = project.grouping === "country" ? [] : project.environments.map(envView);
+        const all = [...environments, ...countries.flatMap((c) => c.environments)];
         return {
-          code: country.code,
-          name: country.name,
+          key: project.key,
+          name: project.name,
+          grouping: project.grouping,
+          countries,
           environments,
-          busyCount: environments.filter((e) => e.busy).length,
+          envCount: all.length,
+          busyCount: all.filter((e) => e.busy).length,
+          error: project.error,
         };
       }),
-      repos: Object.fromEntries(Object.entries(config.repos).map(([k, v]) => [k, redactUrl(v)])),
-      build: config.build,
       maxConcurrent: config.server.maxConcurrent,
       configError: this.config.error,
     };
   }
 
-  plan(countryCode: string, envNames: string[]): PlanResponse {
+  plan(req: PlanRequest): PlanResponse {
     const config = this.config.refresh();
-    const { country, envs } = this.pick(config, countryCode, envNames);
+    const { project, country, envs } = this.pick(config, req);
     const { user, port, keepPrevious } = config.ssh;
     return {
-      countryCode: country.code,
-      countryName: country.name,
+      project: project.key,
+      projectName: project.name,
+      countryCode: country?.code ?? null,
+      countryName: country?.name ?? null,
       maxConcurrent: config.server.maxConcurrent,
       envs: envs.map((env) => {
-        const spec = envSpecOf(config, env);
+        const spec = envSpecOf(config, project, env);
         const repoUrl = redactUrl(spec.repoUrl);
         // Built with a shell-safe token so it isn't quoted, then made readable.
         const TS = "TIMESTAMP";
@@ -179,15 +193,29 @@ export class DeploymentService {
         const remote = buildRemoteScript(spec.remotePath, `${staging}/dist.tar.gz`, staging, keepPrevious)
           .split(" && ")
           .map((cmd) => `(远端) ${cmd.replaceAll(TS, "<时间戳>")}`);
+        const dir = spec.remotePath.slice(spec.remotePath.lastIndexOf("/") + 1);
         return {
-          ...env,
-          repoUrl,
+          name: env.name,
+          branch: env.branch,
+          server: env.server,
+          host: env.host,
+          repo: env.repo,
           remotePath: spec.remotePath,
+          node: spec.toolchain.node,
+          repoUrl,
           sshTarget: `${user}@${spec.host}:${port}`,
           busy: this.holderOf(spec.host, spec.remotePath),
           steps: [
-            { stage: "clone", commands: [`git ${buildCloneArgs(repoUrl, spec.branch, "<临时目录>").join(" ")}`] },
-            { stage: "install", commands: [spec.installCmd] },
+            {
+              stage: "clone",
+              commands: [`git ${buildCloneArgs(repoUrl, spec.branch, "<临时目录>").join(" ")}`],
+              ...(spec.gitAuth ? { note: "凭据来自 git.credentials，不写进地址" } : {}),
+            },
+            {
+              stage: "install",
+              commands: [spec.installCmd],
+              note: spec.toolchain.node ? `node 使用 runtimes.node.${spec.toolchain.node}（${spec.toolchain.nodeBin}）` : "node 使用镜像默认版本",
+            },
             { stage: "build", commands: [spec.buildCmd], note: `产物目录：${spec.dist}` },
             {
               stage: "upload",
@@ -197,8 +225,8 @@ export class DeploymentService {
                 ...remote,
               ],
               note: keepPrevious
-                ? `打包 ${spec.dist} → 传到远端 /tmp 暂存 → 解压到 ${spec.dist}.tmp → 原子替换；旧版本保留为 ${spec.dist}.prev`
-                : `打包 ${spec.dist} → 传到远端 /tmp 暂存 → 解压到 ${spec.dist}.tmp → 原子替换`,
+                ? `打包 ${spec.dist} → 传到远端 /tmp 暂存 → 解压到临时目录 → 原子替换 ${dir}；旧版本保留为 ${dir}.prev`
+                : `打包 ${spec.dist} → 传到远端 /tmp 暂存 → 解压到临时目录 → 原子替换 ${dir}`,
             },
           ],
         };
@@ -256,7 +284,7 @@ export class DeploymentService {
 
   // --------------------------------------------------------------- commands
 
-  create(countryCode: string, envNames: string[], operator: Operator, retryOf: number | null = null): CreatedDeployment {
+  create(req: PlanRequest, operator: Operator, retryOf: number | null = null): CreatedDeployment {
     if (this.persistenceFault) throw new ServiceError("SHUTTING_DOWN", 503, "发布记录保存异常，已暂停新发布；请检查存储并核对发布结果后重启服务");
     if (this.shuttingDown) throw new ServiceError("SHUTTING_DOWN", 503, "服务正在停止，暂不接受新的发布");
 
@@ -268,8 +296,11 @@ export class DeploymentService {
     }
     this.scheduler.setMax(config.server.maxConcurrent);
 
-    const { country, envs } = this.pick(config, countryCode, envNames);
-    const specs = envs.map((env) => envSpecOf(config, env));
+    const { project, country, envs } = this.pick(config, req);
+    if (project.error) {
+      throw new ServiceError("CONFIG_INVALID", 422, `项目「${project.name}」的配置校验失败，已拒绝发起：${project.error}`);
+    }
+    const specs = envs.map((env) => envSpecOf(config, project, env));
 
     const seen = new Map<string, string>();
     for (const spec of specs) {
@@ -298,8 +329,10 @@ export class DeploymentService {
 
     const now = this.clock();
     const id = this.repo.createDeployment({
-      countryCode: country.code,
-      countryName: country.name,
+      projectKey: project.key,
+      projectName: project.name,
+      countryCode: country?.code ?? null,
+      countryName: country?.name ?? null,
       operatorIp: operator.ip,
       operatorName: operator.name,
       userAgent: operator.userAgent,
@@ -311,7 +344,6 @@ export class DeploymentService {
     const rt: Runtime = {
       id,
       createdAt: now,
-      countryName: country.name,
       specs,
       creds: { user: config.ssh.user, port: config.ssh.port, privateKey, keepPrevious: config.ssh.keepPrevious },
       state: initialProgressState(specs.length, now),
@@ -326,7 +358,7 @@ export class DeploymentService {
       this.locks.set(lockKey(spec.host, spec.remotePath), { deploymentId: id, envIdx: idx, envName: spec.name });
       this.scheduler.enqueue({ id: jobId(id, idx), run: () => this.runEnv(rt, idx) });
     });
-    console.log(`[deploy] #${id} ${country.name} × ${specs.length} by ${operator.name ?? "-"} (${operator.ip})`);
+    console.log(`[deploy] #${id} ${scopeLabel(project.name, country?.name ?? null)} × ${specs.length} by ${operator.name ?? "-"} (${operator.ip})`);
     return { id };
   }
 
@@ -335,7 +367,7 @@ export class DeploymentService {
     if (!summary) throw new ServiceError("NOT_FOUND", 404, `任务 #${id} 不存在`);
     const failed = this.repo.envs(id).filter((e) => e.status === "error" || e.status === "cancelled" || e.status === "interrupted");
     if (failed.length === 0) throw new ServiceError("BAD_REQUEST", 400, `任务 #${id} 没有失败、取消或中断的环境`);
-    return this.create(summary.countryCode, failed.map((e) => e.envName), operator, id);
+    return this.create({ project: summary.projectKey, countryCode: summary.countryCode, envNames: failed.map((e) => e.envName) }, operator, id);
   }
 
   cancel(id: number, envIdx?: number): CancelResult {
@@ -442,18 +474,28 @@ export class DeploymentService {
 
   // ------------------------------------------------------------- internals
 
-  private pick(config: AppConfig, countryCode: string, envNames: string[]) {
-    const country = findCountry(config, countryCode);
-    if (!country) throw new ServiceError("NOT_FOUND", 404, `国家 ${countryCode} 不存在`);
-    const names = [...new Set(envNames)];
+  private pick(config: AppConfig, req: PlanRequest): { project: ProjectConfig; country: CountryConfig | null; envs: EnvConfig[] } {
+    const project = findProject(config, req.project);
+    if (!project) throw new ServiceError("NOT_FOUND", 404, `项目 ${req.project} 不存在`);
+    let country: CountryConfig | null = null;
+    let pool: EnvConfig[];
+    if (project.grouping === "country") {
+      if (!req.countryCode) throw new ServiceError("BAD_REQUEST", 400, `项目「${project.name}」按国家发布，需要 countryCode`);
+      country = findCountry(project, req.countryCode) ?? null;
+      if (!country) throw new ServiceError("NOT_FOUND", 404, `项目「${project.name}」下没有国家 ${req.countryCode}`);
+      pool = country.environments;
+    } else {
+      pool = project.environments;
+    }
+    const scope = scopeLabel(project.name, country?.name ?? null);
+    const names = [...new Set(req.envNames)];
     if (names.length === 0) throw new ServiceError("BAD_REQUEST", 400, "至少选择一个环境");
-    const missing = names.filter((n) => !country.environments.some((e) => e.name === n));
+    const missing = names.filter((n) => !pool.some((e) => e.name === n));
     if (missing.length) {
-      throw new ServiceError("NOT_FOUND", 404, `${country.name} 下没有这些环境：${missing.join("、")}（可能已从配置中移除）`, { missing });
+      throw new ServiceError("NOT_FOUND", 404, `${scope} 下没有这些环境：${missing.join("、")}（可能已从配置中移除）`, { missing });
     }
     // Keep config order so the task list matches the picker.
-    const envs: Environment[] = country.environments.filter((e) => names.includes(e.name));
-    return { country, envs };
+    return { project, country, envs: pool.filter((e) => names.includes(e.name)) };
   }
 
   private publish(id: number, msg: DeploymentMessage): void {

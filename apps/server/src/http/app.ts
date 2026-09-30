@@ -10,6 +10,7 @@ import type {
   LogChunk,
   LogLine,
   LogTail,
+  PlanRequest,
   RetryDeploymentRequest,
   WhoAmI,
 } from "@shipyard/shared";
@@ -52,6 +53,14 @@ async function jsonBody<T>(c: Context): Promise<T> {
   } catch {
     throw new ServiceError("BAD_REQUEST", 400, "请求体不是合法的 JSON");
   }
+}
+
+function planRequest(body: unknown): PlanRequest {
+  const b = body as Partial<CreateDeploymentRequest> | null;
+  if (typeof b?.project !== "string" || !Array.isArray(b.envNames) || (b.countryCode != null && typeof b.countryCode !== "string")) {
+    throw new ServiceError("BAD_REQUEST", 400, "需要 project、envNames，按国家发布的项目还需要 countryCode");
+  }
+  return { project: b.project, countryCode: b.countryCode ?? null, envNames: b.envNames.map(String) };
 }
 
 function operatorName(raw: unknown): string | null {
@@ -143,19 +152,12 @@ export function createApp(deps: AppDeps): Hono<Env> {
 
   // Pure computation — anyone who can read may preview the plan.
   api.post("/deployments/plan", guardRead, async (c) => {
-    const body = await jsonBody<CreateDeploymentRequest>(c);
-    if (typeof body?.countryCode !== "string" || !Array.isArray(body.envNames)) {
-      throw new ServiceError("BAD_REQUEST", 400, "需要 countryCode 和 envNames");
-    }
-    return c.json(service.plan(body.countryCode, body.envNames.map(String)));
+    return c.json(service.plan(planRequest(await jsonBody<PlanRequest>(c))));
   });
 
   api.post("/deployments", guardWrite, async (c) => {
     const body = await jsonBody<CreateDeploymentRequest>(c);
-    if (typeof body?.countryCode !== "string" || !Array.isArray(body.envNames)) {
-      throw new ServiceError("BAD_REQUEST", 400, "需要 countryCode 和 envNames");
-    }
-    const created = service.create(body.countryCode, body.envNames.map(String), {
+    const created = service.create(planRequest(body), {
       ip: c.get("ip"),
       name: operatorName(body.operatorName),
       userAgent: c.req.header("user-agent")?.slice(0, 300) ?? null,
@@ -169,6 +171,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
     const query: DeploymentListQuery = {
       page: intParam(q.page) ?? 1,
       pageSize: intParam(q.pageSize) ?? 20,
+      ...(q.project ? { project: q.project } : {}),
       ...(q.country ? { country: q.country } : {}),
       ...(q.env ? { env: q.env } : {}),
       ...(status && DEPLOYMENT_STATUSES.includes(status) ? { status } : {}),

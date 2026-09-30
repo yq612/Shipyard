@@ -42,12 +42,18 @@ async function main(): Promise<void> {
     config = new ConfigStore(CONFIG_PATH);
   } catch (e) {
     console.error(`[startup] ${e instanceof Error ? e.message : String(e)}`);
-    console.error(`[startup] 请把配置文件放到 ${CONFIG_PATH}（可参考 config.example.yaml），或用 CONFIG_PATH 指定路径`);
+    console.error(`[startup] 请把配置文件放到 ${CONFIG_PATH}（可参考 config.example/），或用 CONFIG_PATH 指定路径`);
     process.exit(1);
   }
   const cfg = config.get();
   if (!existsSync(cfg.ssh.privateKeyPath)) {
     console.warn(`[startup] SSH 私钥不存在：${cfg.ssh.privateKeyPath}，发起发布时会被拒绝`);
+  }
+  for (const [label, bin] of Object.entries(cfg.runtimes.node)) {
+    if (!existsSync(join(bin, "node"))) console.warn(`[startup] runtimes.node.${label} 指向的 ${bin} 下没有 node，用到它的环境会构建失败`);
+  }
+  for (const p of cfg.projects) {
+    if (p.error) console.warn(`[startup] 项目「${p.name}」配置有误，暂不能发布：${p.error}`);
   }
   if (cfg.access.allowIps.length === 0) {
     console.warn("[startup] access.allowIps 为空：所有人都只能查看，不能执行发布");

@@ -14,8 +14,10 @@ import { redactUrl } from "@shipyard/shared";
 import type { EnvSpec } from "../core/types.ts";
 
 export interface NewDeployment {
-  countryCode: string;
-  countryName: string;
+  projectKey: string;
+  projectName: string;
+  countryCode: string | null;
+  countryName: string | null;
   operatorIp: string;
   operatorName: string | null;
   userAgent: string | null;
@@ -60,8 +62,10 @@ const SUMMARY_SELECT = `
 function toSummary(row: any): DeploymentSummary {
   return {
     id: row.id,
-    countryCode: row.country_code,
-    countryName: row.country_name,
+    projectKey: row.project_key,
+    projectName: row.project_name,
+    countryCode: row.country_code || null,
+    countryName: row.country_name || null,
     status: row.status,
     operatorName: row.operator_name,
     operatorIp: row.operator_ip,
@@ -92,6 +96,7 @@ function toEnvView(row: any): DeploymentEnvView {
     installCmd: row.install_cmd,
     buildCmd: row.build_cmd,
     dist: row.dist,
+    node: row.node ?? null,
     status: row.status,
     failedStage: row.failed_stage,
     errorSummary: row.error_summary,
@@ -141,12 +146,14 @@ export class Repository {
     return this.transaction(() => {
       const row = this.db
         .query(
-          `INSERT INTO deployments (country_code, country_name, status, operator_ip, operator_name, user_agent, retry_of, created_at)
-           VALUES (?, ?, 'queued', ?, ?, ?, ?, ?) RETURNING id`,
+          `INSERT INTO deployments (project_key, project_name, country_code, country_name, status, operator_ip, operator_name, user_agent, retry_of, created_at)
+           VALUES (?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?) RETURNING id`,
         )
         .get(
-          input.countryCode,
-          input.countryName,
+          input.projectKey,
+          input.projectName,
+          input.countryCode ?? "",
+          input.countryName ?? "",
           input.operatorIp,
           input.operatorName,
           input.userAgent,
@@ -155,8 +162,8 @@ export class Repository {
         ) as { id: number };
       const insertEnv = this.db.query(
         `INSERT INTO deployment_envs
-           (deployment_id, idx, env_name, branch, server, host, repo_key, repo_url, remote_path, install_cmd, build_cmd, dist, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'queued')`,
+           (deployment_id, idx, env_name, branch, server, host, repo_key, repo_url, remote_path, install_cmd, build_cmd, dist, node, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'queued')`,
       );
       input.envs.forEach((env, idx) => {
         insertEnv.run(
@@ -172,6 +179,7 @@ export class Repository {
           env.installCmd,
           env.buildCmd,
           env.dist,
+          env.toolchain.node,
         );
       });
       return row.id;
@@ -223,6 +231,10 @@ export class Repository {
   list(query: DeploymentListQuery): { items: DeploymentSummary[]; total: number } {
     const where: string[] = [];
     const params: any[] = [];
+    if (query.project) {
+      where.push("d.project_key = ?");
+      params.push(query.project);
+    }
     if (query.country) {
       where.push("d.country_code = ?");
       params.push(query.country);

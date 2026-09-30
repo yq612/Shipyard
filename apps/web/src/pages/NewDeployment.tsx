@@ -1,20 +1,29 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useSearchParams } from "react-router";
-import type { ConfigView, CountryView, EnvBusyDetail, EnvView, PlanResponse } from "@shipyard/shared";
-import { STAGE_NAMES, TASK_STATUS_NAMES, shortSha } from "@shipyard/shared";
+import { Navigate, NavLink, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
+import type { EnvBusyDetail, EnvView, PlanResponse, ProjectView } from "@shipyard/shared";
+import { STAGE_NAMES, TASK_STATUS_NAMES, scopeLabel, shortSha } from "@shipyard/shared";
 import { ApiError, api, errorMessage } from "../api.ts";
 import { CountryCard } from "../components/CountryCard.tsx";
 import { useCanExecute } from "../components/Layout.tsx";
 import { CheckIcon, CrossIcon, Loading, Notice, PageHead, Steps, type StepState } from "../components/ui.tsx";
 import { useOperatorName } from "../lib/operator.ts";
 import { pollEvery, usePollStopped } from "../lib/poll.ts";
+import { lastProject, rememberProject } from "../lib/project.ts";
 import { formatDateTime } from "../lib/time.ts";
 
 type Step = 0 | 1 | 2;
 
-// Wizard state lives in the URL (?country=PK&envs=A,B&step=2) so refresh and
-// the browser back button behave.
+// What one deployment picks environments from: a country of a grouped
+// project, or the whole of an ungrouped one (code null).
+interface Scope {
+  code: string | null;
+  name: string;
+  environments: EnvView[];
+}
+
+// Wizard state lives in the URL (/p/topup?country=PK&envs=A,B&step=2) so
+// refresh and the browser back button behave.
 const SEP = "\u0001"; // env names may contain commas and spaces
 
 function readParams(params: URLSearchParams) {
@@ -54,34 +63,73 @@ function useWizardParams() {
   return { country, envs, step, update };
 }
 
+// `/` (and old `/?country=…` links) → the last project used, else the first.
+export function ProjectRedirect() {
+  const config = useQuery({ queryKey: ["config"], queryFn: api.config });
+  const { search } = useLocation();
+  if (config.isError) return <Notice tone="err">读取配置失败：{errorMessage(config.error)}</Notice>;
+  if (!config.data) return <Loading text="读取配置" />;
+  const projects = config.data.projects;
+  // Links from before projects existed all point at the recharge site.
+  const legacy = new URLSearchParams(search).has("country") ? projects.find((p) => p.key === "topup") : undefined;
+  const target = legacy ?? projects.find((p) => p.key === lastProject()) ?? projects[0];
+  if (!target) return <div className="empty">配置里还没有项目，先在 data/projects/ 下添加</div>;
+  return <Navigate to={`/p/${target.key}${search}`} replace />;
+}
+
 export function NewDeployment() {
+  const projectKey = useParams().project ?? "";
   const config = useQuery({ queryKey: ["config"], queryFn: api.config, refetchInterval: pollEvery(5000) });
   const configStopped = usePollStopped(["config"]);
   const { country, envs, step, update } = useWizardParams();
-  const current = config.data?.countries.find((c) => c.code === country);
+  const project = config.data?.projects.find((p) => p.key === projectKey);
+  const grouped = project?.grouping === "country";
+  const current: Scope | undefined = !project
+    ? undefined
+    : grouped
+      ? project.countries.find((c) => c.code === country)
+      : { code: null, name: project.name, environments: project.environments };
 
-  // Guard against stale URLs (country removed from config, etc.).
-  const effectiveStep: Step = !current ? 0 : step === 2 && envs.length === 0 ? 1 : step;
+  useEffect(() => {
+    if (project) rememberProject(project.key);
+  }, [project]);
+
+  // Guard against stale URLs (country removed from config, etc.). Ungrouped
+  // projects have no first step.
+  const effectiveStep: Step = !current ? 0 : step === 2 && envs.length === 0 ? 1 : grouped ? step : step === 0 ? 1 : step;
 
   const states: StepState[] = [0, 1, 2, 3, 4].map((i) => (i < effectiveStep ? "done" : i === effectiveStep ? "current" : "todo"));
+  const scope = project ? scopeLabel(project.name, grouped ? (current?.name ?? null) : null) : "";
 
   return (
     <>
       <PageHead
         title="新建发布"
         meta={
-          effectiveStep === 0
-            ? "选一个国家开始。每次发布只针对一个国家下的若干环境。"
-            : effectiveStep === 1
-              ? `${current?.name} · 选择要发布的环境`
-              : `${current?.name} · 确认每个环境接下来要执行的步骤`
+          !project
+            ? "选择一个项目开始。"
+            : effectiveStep === 0
+              ? `${project.name} · 选一个国家。每次发布只针对一个国家下的若干环境。`
+              : effectiveStep === 1
+                ? `${scope} · 选择要发布的环境`
+                : `${scope} · 确认每个环境接下来要执行的步骤`
         }
       />
-      <Steps states={states} onStep={(i) => update({ step: i as Step })} />
+      {config.data && <ProjectTabs projects={config.data.projects} current={projectKey} />}
+      <Steps
+        states={states}
+        first={project && !grouped ? "选择项目" : undefined}
+        onStep={(i) => update({ step: i as Step })}
+      />
 
       {config.data?.configError && (
         <Notice tone="err">
           配置文件校验失败，已暂停发起新发布（正在执行的任务不受影响）：{config.data.configError}
+        </Notice>
+      )}
+      {project?.error && (
+        <Notice tone="err">
+          「{project.name}」的项目配置校验失败，已暂停这个项目的新发布（正在执行的任务不受影响）：{project.error}
         </Notice>
       )}
 
@@ -92,30 +140,55 @@ export function NewDeployment() {
         </Notice>
       ) : !config.data ? (
         <Loading text="读取配置" />
+      ) : !project ? (
+        <Notice tone="err">项目「{projectKey}」不存在，可能已从配置中移除。从上面选一个项目。</Notice>
       ) : effectiveStep === 0 ? (
-        <CountryStep config={config.data!} selected={country} onPick={(code) => update({ country: code, envs: code === country ? envs : [], step: 1 })} />
+        <CountryStep project={project} selected={country} onPick={(code) => update({ country: code, envs: code === country ? envs : [], step: 1 })} />
       ) : effectiveStep === 1 ? (
         <EnvStep
-          country={current!}
+          scope={current!}
           selected={envs}
           onChange={(fn) => update({ envs: fn }, true)}
-          onBack={() => update({ step: 0 })}
+          onBack={grouped ? () => update({ step: 0 }) : undefined}
           onNext={() => update({ step: 2 })}
         />
       ) : (
-        <PlanStep country={current!} envNames={envs} onBack={() => update({ step: 1 })} />
+        <PlanStep project={project} scope={current!} envNames={envs} onBack={() => update({ step: 1 })} />
       )}
     </>
   );
 }
 
+function ProjectTabs({ projects, current }: { projects: ProjectView[]; current: string }) {
+  return (
+    <nav className="ptabs" aria-label="项目">
+      {projects.map((p) => (
+        <NavLink
+          key={p.key}
+          to={`/p/${p.key}`}
+          className={`ptabs__tab${p.key === current ? " is-current" : ""}`}
+          aria-current={p.key === current ? "page" : undefined}
+        >
+          <span className="ptabs__name">{p.name}</span>
+          <span className="ptabs__count">{p.envCount}</span>
+          {p.error ? (
+            <span className="ptabs__flag err" title={p.error}>!</span>
+          ) : p.busyCount > 0 ? (
+            <span className="ptabs__flag ok" title={`${p.busyCount} 个环境发布中`}>{p.busyCount} 发布中</span>
+          ) : null}
+        </NavLink>
+      ))}
+    </nav>
+  );
+}
+
 // ------------------------------------------------------------ ① 选择国家
 
-function CountryStep({ config, selected, onPick }: { config: ConfigView; selected: string; onPick: (code: string) => void }) {
-  if (config.countries.length === 0) return <div className="empty">配置里还没有国家，先在 config.yaml 里添加</div>;
+function CountryStep({ project, selected, onPick }: { project: ProjectView; selected: string; onPick: (code: string) => void }) {
+  if (project.countries.length === 0) return <div className="empty">这个项目还没有国家，先在 data/projects/{project.key}.yaml 里添加</div>;
   return (
     <div className="countries" role="list">
-      {config.countries.map((c) => (
+      {project.countries.map((c) => (
         <CountryCard key={c.code} country={c} current={c.code === selected} onPick={onPick} />
       ))}
     </div>
@@ -143,31 +216,31 @@ function LastDeploy({ env }: { env: EnvView }) {
 }
 
 function EnvStep({
-  country,
+  scope,
   selected,
   onChange,
   onBack,
   onNext,
 }: {
-  country: CountryView;
+  scope: Scope;
   selected: string[];
   onChange: (update: (prev: string[]) => string[]) => void;
-  onBack: () => void;
+  onBack?: () => void;
   onNext: () => void;
 }) {
   const [search, setSearch] = useState("");
   const q = search.trim().toLowerCase();
-  const rows = country.environments.filter(
-    (e) => !q || [e.name, e.branch, e.server, e.host, e.repo].some((v) => v.toLowerCase().includes(q)),
+  const rows = scope.environments.filter(
+    (e) => !q || [e.name, e.branch, e.remotePath, e.host, e.repo].some((v) => v.toLowerCase().includes(q)),
   );
   // Busy envs can't be picked; drop them if they became busy after selection.
   const selectable = rows.filter((e) => !e.busy);
-  const chosen = new Set(selected.filter((n) => country.environments.some((e) => e.name === n && !e.busy)));
+  const chosen = new Set(selected.filter((n) => scope.environments.some((e) => e.name === n && !e.busy)));
   const allOn = selectable.length > 0 && selectable.every((e) => chosen.has(e.name));
   const someOn = selectable.some((e) => chosen.has(e.name));
 
   // Keep config order, and never keep a name that is gone or busy.
-  const ordered = (names: Set<string>) => country.environments.filter((e) => names.has(e.name) && !e.busy).map((e) => e.name);
+  const ordered = (names: Set<string>) => scope.environments.filter((e) => names.has(e.name) && !e.busy).map((e) => e.name);
   const toggle = (name: string) =>
     onChange((prev) => {
       const next = new Set(prev);
@@ -192,11 +265,11 @@ function EnvStep({
           <span className="visually-hidden">搜索环境</span>
           <span className="field__box">
             <span className="field__prompt" aria-hidden="true">/</span>
-            <input className="field__input" type="search" placeholder="搜索环境、分支、server、主机" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <input className="field__input" type="search" placeholder="搜索环境、分支、目录、主机" value={search} onChange={(e) => setSearch(e.target.value)} />
           </span>
         </label>
         <span className="toolbar__count">
-          已选 <b>{chosen.size}</b> / {country.environments.length}
+          已选 <b>{chosen.size}</b> / {scope.environments.length}
         </span>
       </div>
 
@@ -219,8 +292,8 @@ function EnvStep({
               </th>
               <th>环境</th>
               <th>分支</th>
-              <th>server</th>
               <th>主机</th>
+              <th>发布目录</th>
               <th>仓库</th>
               <th>上次发布</th>
               <th>当前状态</th>
@@ -253,9 +326,12 @@ function EnvStep({
                   </td>
                   <td className="nowrap">{e.name}</td>
                   <td className="mono dim">{e.branch}</td>
-                  <td className="mono dim">{e.server}</td>
                   <td className="mono dim">{e.host}</td>
-                  <td><span className="tag tag--sm">{e.repo}</span></td>
+                  <td className="mono dim ellipsis" style={{ maxWidth: 312 }} title={e.remotePath}>{e.remotePath}</td>
+                  <td className="nowrap">
+                    <span className="tag tag--sm">{e.repo}</span>
+                    {e.node && <span className="tag tag--sm" title="构建使用的 node 版本">{e.node}</span>}
+                  </td>
                   <td className="nowrap"><LastDeploy env={e} /></td>
                   <td className="nowrap">
                     {e.busy ? (
@@ -275,7 +351,7 @@ function EnvStep({
 
       <div className="footer-actions">
         <span className="footer-actions__hint">正在被其他任务占用的环境不能选，等它结束后再发。</span>
-        <button type="button" className="btn btn--ghost" onClick={onBack}>上一步</button>
+        {onBack && <button type="button" className="btn btn--ghost" onClick={onBack}>上一步</button>}
         <button type="button" className="btn btn--primary" disabled={chosen.size === 0} onClick={onNext}>
           下一步：确认执行计划
         </button>
@@ -286,19 +362,20 @@ function EnvStep({
 
 // ------------------------------------------------------------ ③ 确认执行计划
 
-function PlanStep({ country, envNames, onBack }: { country: CountryView; envNames: string[]; onBack: () => void }) {
+function PlanStep({ project, scope, envNames, onBack }: { project: ProjectView; scope: Scope; envNames: string[]; onBack: () => void }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { allowed, ip } = useCanExecute();
   const [operator, setOperator] = useOperatorName();
+  const request = { project: project.key, countryCode: scope.code, envNames };
   const plan = useQuery({
-    queryKey: ["plan", country.code, envNames],
-    queryFn: () => api.plan({ countryCode: country.code, envNames }),
+    queryKey: ["plan", project.key, scope.code, envNames],
+    queryFn: () => api.plan(request),
     retry: false,
   });
 
   const create = useMutation({
-    mutationFn: () => api.create({ countryCode: country.code, envNames, operatorName: operator.trim() || undefined }),
+    mutationFn: () => api.create({ ...request, operatorName: operator.trim() || undefined }),
     onSuccess: ({ id }) => {
       void queryClient.invalidateQueries({ queryKey: ["config"] });
       void queryClient.invalidateQueries({ queryKey: ["deployments"] });
@@ -323,7 +400,7 @@ function PlanStep({ country, envNames, onBack }: { country: CountryView; envName
       {plan.data && (
         <div className="confirm">
           <div>
-            <Notice tone="warn">发布会直接覆盖线上目录。替换前的版本会保留为 dist.prev，需要回滚时可以登录服务器手工切回。</Notice>
+            <Notice tone="warn">发布会直接覆盖线上目录。替换前的版本会保留为同名的 .prev 目录，需要回滚时可以登录服务器手工切回。</Notice>
             {busy.length > 0 && (
               <Notice tone="err">
                 {busy.map((e) => `「${e.name}」正被 #${e.busy!.deploymentId} 占用`).join("，")}，请回到上一步取消勾选，或等它结束。
@@ -363,15 +440,15 @@ function PlanStep({ country, envNames, onBack }: { country: CountryView; envName
 
       <div className="footer-actions">
         <span className="footer-actions__hint">
-          {plan.data ? `${plan.data.countryName} · ${plan.data.envs.length} 个环境 · 同时最多执行 ${plan.data.maxConcurrent} 个，其余排队` : ""}
+          {plan.data ? `${scopeLabel(plan.data.projectName, plan.data.countryName)} · ${plan.data.envs.length} 个环境 · 所有项目同时最多执行 ${plan.data.maxConcurrent} 个，其余排队` : ""}
         </span>
         <button type="button" className="btn btn--ghost" onClick={onBack}>上一步</button>
         <button
           type="button"
           className="btn btn--primary"
-          disabled={!allowed || !plan.data || busy.length > 0 || create.isPending}
+          disabled={!allowed || !plan.data || busy.length > 0 || !!project.error || create.isPending}
           aria-busy={create.isPending}
-          title={!allowed ? "当前 IP 不在白名单" : undefined}
+          title={!allowed ? "当前 IP 不在白名单" : project.error ? "项目配置校验失败" : undefined}
           onClick={() => create.mutate()}
         >
           {create.isPending ? "发起中…" : "开始发布"}
@@ -385,7 +462,7 @@ function PlanList({ plan }: { plan: PlanResponse }) {
   return (
     <div className="plan">
       <p className="sec-title">
-        <span>执行计划 · {plan.countryName} · {plan.envs.length} 个环境</span>
+        <span>执行计划 · {scopeLabel(plan.projectName, plan.countryName)} · {plan.envs.length} 个环境</span>
         <span>点击展开查看每一步的具体命令</span>
       </p>
       {plan.envs.map((e, i) => (
@@ -398,7 +475,14 @@ function PlanList({ plan }: { plan: PlanResponse }) {
                 {e.branch} → {e.host} : {e.remotePath}
               </span>
             </span>
-            {e.busy ? <span className="tag tag--err tag--sm">占用：#{e.busy.deploymentId}</span> : <span className="tag tag--sm">{e.repo}</span>}
+            {e.busy ? (
+              <span className="tag tag--err tag--sm">占用：#{e.busy.deploymentId}</span>
+            ) : (
+              <span className="nowrap">
+                <span className="tag tag--sm">{e.repo}</span>
+                {e.node && <span className="tag tag--sm">{e.node}</span>}
+              </span>
+            )}
           </summary>
           <div className="plan-env__body">
             {e.steps.map((s, si) => (

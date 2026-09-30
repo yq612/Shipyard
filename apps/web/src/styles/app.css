@@ -163,6 +163,7 @@ button.step:hover .step__no { color: inherit; }
 
 /* 提示条：一行说清楚发生了什么、怎么办 */
 .notice { display: flex; align-items: flex-start; gap: var(--s-2); padding: var(--s-2) var(--s-3); font-size: var(--t-14); line-height: 24px; border: var(--bw) solid var(--c-line-strong); background: var(--c-panel); color: var(--c-ink-2); }
+.tag + .tag { margin-left: var(--s-1); }
 .notice__icon { flex: none; font: 400 var(--t-12)/24px var(--f-pixel); }
 .notice--warn { border-color: var(--c-amber); color: var(--c-amber); }
 .notice--err { border-color: var(--c-red); color: var(--c-red); }
@@ -230,6 +231,18 @@ button.step:hover .step__no { color: inherit; }
 /* ---------- ① 国家卡片 ---------- */
 .countries { display: grid; grid-template-columns: repeat(auto-fill, minmax(204px, 1fr)); gap: var(--s-2); }
 .country { position: relative; isolation: isolate; display: grid; gap: var(--s-1); min-height: 132px; padding: var(--s-3); text-align: left; font: inherit; color: var(--c-ink); background: var(--c-panel); border: var(--bw) solid var(--c-line); cursor: var(--cursor-pointer, pointer); transition: var(--tr-hover); }
+/* ---------- 项目切换 ----------
+   一排平铺的标签，当前项目用主色反显（同 .nav__link），悬停虚线框。
+   右上角的数字是环境数；配置有误显示红色 !，有发布在跑显示绿色提示。 */
+.ptabs { display: flex; flex-wrap: wrap; gap: var(--s-1); margin-top: var(--s-4); }
+.ptabs__tab { display: inline-flex; align-items: baseline; gap: var(--s-1); padding: var(--s-1) var(--s-2); font: 400 var(--t-14)/24px var(--f-body); color: var(--c-ink-2); text-decoration: none; background: var(--c-panel); border: var(--bw) solid var(--c-line); transition: var(--tr-hover); }
+.ptabs__tab:hover { color: var(--c-ink); border-style: dotted; border-color: var(--c-accent-ink); }
+.ptabs__tab.is-current { color: var(--c-on-accent); background: var(--c-accent); border-color: var(--c-accent); }
+.ptabs__count { font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); }
+.ptabs__flag { font: 400 var(--t-12)/18px var(--f-pixel); }
+.ptabs__tab.is-current .ptabs__count, .ptabs__tab.is-current .ptabs__flag { color: inherit; }
+@media (prefers-reduced-motion: reduce) { .ptabs__tab { transition: none; } }
+
 /* 三种状态靠线型区分：默认细实线，悬停点线（像光标框住这一格），选中 2px 实线 */
 .country:hover { border-style: dotted; border-color: var(--c-accent-ink); background: var(--scan-panel), var(--c-accent-wash); }
 .country.is-current { border: var(--bw-strong) solid var(--c-accent-ink); padding: calc(var(--s-3) - 1px); background: var(--scan-panel), var(--c-accent-wash); }

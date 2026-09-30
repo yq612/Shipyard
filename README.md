@@ -1,10 +1,10 @@
 # Shipyard
 
-在浏览器里完成「选国家 → 选环境 → 确认计划 → 执行」的构建与发布。每个环境在服务端依次执行「克隆代码 → 安装依赖 → 构建产物 → 上传发布」，进度和日志实时可见，发布记录可追溯，结束后可推送飞书通知。
+在浏览器里完成「选项目（国家） → 选环境 → 确认计划 → 执行」的构建与发布。每个环境在服务端依次执行「克隆代码 → 安装依赖 → 构建产物 → 上传发布」，进度和日志实时可见，发布记录可追溯，结束后可推送飞书通知。
 
-- **新建发布**：按国家挑选环境，确认执行计划（分支、目标主机、命令）后开始
+- **新建发布**：先选项目（充值网站、官网、定制商城……），按国家分组的项目再选国家，然后挑选环境，确认执行计划（分支、目标主机、命令、node 版本）后开始
 - **发布详情**：每个环境的阶段进度、实时日志；可取消执行中的环境，重试失败的环境或同样的环境再发一次
-- **发布记录**：按国家筛选历史发布
+- **发布记录**：按项目、国家、环境、状态筛选历史发布
 
 界面遵循 [磷光设计体系](docs/design/README.md)。
 
@@ -15,7 +15,8 @@ packages/shared   前后端共用：类型、ProgressEvent、reduceProgress（�
 apps/server       Bun + Hono：REST + SSE、调度、环境锁、SQLite、日志、飞书通知
 apps/web          Vite + React，构建后由 server 托管
 deploy/           compose 用的 Caddyfile、服务器升级脚本
-data/             运行时数据（不进 git）：config.yaml、ssh/deploy.pem、shipyard.db、logs/
+config.example/   配置示例：全局 config.yaml + 每个项目一个 projects/<项目>.yaml
+data/             运行时数据（不进 git）：config.yaml、projects/、ssh/deploy.pem、shipyard.db、logs/
 ```
 
 ## 开发
@@ -24,7 +25,7 @@ data/             运行时数据（不进 git）：config.yaml、ssh/deploy.pem
 
 ```bash
 bun install
-mkdir -p data/ssh && cp config.example.yaml data/config.yaml
+mkdir -p data/ssh && cp -R config.example/. data/   # 得到 data/config.yaml 和 data/projects/
 cp /path/to/deploy.pem data/ssh/ && chmod 600 data/ssh/deploy.pem
 bun run dev          # API :8080 + Vite :5173，127.0.0.1 默认在白名单
 bun test && bun run typecheck
@@ -36,14 +37,17 @@ bun test && bun run typecheck
 
 服务器要求：Docker（带 compose 插件）、git；域名 A 记录指向它；80 / 443 对全网开放（证书验证从多地发起），8080 不开。
 
-运行镜像内同时包含 Bun 和 Node.js 22，宿主机不用安装它们。构建命令写 `bun install` / `bun run build` 即可，不要给 Nuxt 2 等工具加 `--bun` 强制切换运行时。
+运行镜像内同时包含 Bun 和 Node.js，版本固定在 Dockerfile 的 `BUN_VERSION` / `NODE_VERSION`（升级就改这两行），宿主机不用安装它们。构建命令写 `bun install` / `bun run build` 即可，不要给 Nuxt 2 等工具加 `--bun` 强制切换运行时。每个环境的日志开头会记录实际用的 node 和 bun 版本。
+
+个别项目需要别的 node 版本时，把官方的 `node-vXX-linux-x64.tar.xz` 解压到 `data/runtimes/`，在 `data/config.yaml` 的 `runtimes.node` 里起个名字，再在项目或环境的 `build.node` 里引用它。不用重建镜像。
 
 ### 不在 git 里、要手工放到服务器的文件
 
 | 文件 | 内容 |
 |---|---|
 | `.env` | `SHIPYARD_DOMAIN=<域名>`；可选 `FEISHU_WEBHOOK` / `FEISHU_SECRET` |
-| `data/config.yaml` | 从 [config.example.yaml](config.example.yaml) 改，`access` 见下 |
+| `data/config.yaml` | 从 [config.example/config.yaml](config.example/config.yaml) 改，`access`、`git` 见下 |
+| `data/projects/*.yaml` | 每个项目一个文件，从 [config.example/projects/](config.example/projects) 改 |
 | `data/ssh/deploy.pem` | 登录目标机的私钥，`chmod 600` |
 
 其余（`shipyard.db`、`logs/`、证书）都是运行时生成的，新机器从空开始。
@@ -99,7 +103,16 @@ bun run deploy
 
 ## 配置
 
-见 [config.example.yaml](config.example.yaml)。热加载：每次发起发布前重新读取；改坏了只暂停新发布，不影响执行中的任务。
+见 [config.example/](config.example)。分两层：
+
+- `config.yaml`：所有项目共用的服务设置、访问控制、SSH 身份、Git 令牌（`git.credentials`，按主机）、可选的 node 版本（`runtimes.node`）和默认构建命令
+- `projects/<项目>.yaml`：项目名、分组方式（`grouping: country` 或 `none`）、仓库、环境。文件名就是项目 key，会写进发布记录，定了不要改。构建命令、产物目录、node 版本可以在项目和单个环境上按字段覆盖
+
+环境的发布目录直接写 `remotePath`（至少两级的绝对路径），或者用项目的 `remotePathTemplate` 加 `server` 拼出来。任何两个环境（包括不同项目的）都不能发布到同一台主机的同一个目录。
+
+旧的单文件格式（`repos` / `countries` 直接写在 `config.yaml` 里）仍然能读，会当作「充值网站」项目（key `topup`）。迁移时把这两段挪到 `projects/topup.yaml`、仓库地址里的令牌挪到 `git.credentials` 即可，发布记录会沿用。
+
+热加载：每次发起发布前重新读取；`config.yaml` 改坏了暂停所有新发布，某个项目文件改坏了只暂停这个项目，都不影响执行中的任务。
 
 ## 行为
 
@@ -122,5 +135,5 @@ bun run deploy
 ## 上线检查
 
 1. 目标机安全组放行服务器出口 IP 的 22 端口
-2. `data/config.yaml` 的 `repos` 地址带 Codeup 只读令牌（容器读不到宿主机的 git 凭据）
+2. `data/config.yaml` 的 `git.credentials` 填了 Codeup / GitHub 的只读令牌（容器读不到宿主机的 git 凭据）；私有 GitHub 仓库也需要
 3. 页面显示的 IP 是自己的出口 IP 且可执行；显示「未知」说明 `trustProxy` 没开

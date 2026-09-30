@@ -3,7 +3,7 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
 // Each entry runs once, in order; PRAGMA user_version records how far we got.
-const MIGRATIONS: string[] = [
+export const MIGRATIONS: string[] = [
   `
   CREATE TABLE deployments (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,6 +58,14 @@ const MIGRATIONS: string[] = [
     at            INTEGER NOT NULL,
     PRIMARY KEY (deployment_id, seq)
   );
+  `,
+  // Projects. Everything before this was the recharge site. country_code / country_name
+  // stay NOT NULL; projects without countries store '' there.
+  `
+  ALTER TABLE deployments ADD COLUMN project_key TEXT NOT NULL DEFAULT 'topup';
+  ALTER TABLE deployments ADD COLUMN project_name TEXT NOT NULL DEFAULT '充值网站';
+  CREATE INDEX idx_deployments_project ON deployments(project_key, created_at DESC);
+  ALTER TABLE deployment_envs ADD COLUMN node TEXT;
   `,
 ];
 

@@ -19,6 +19,7 @@ function Topbar() {
   const who = useWhoami();
   const { pathname } = useLocation();
   const onDeployments = pathname.startsWith("/deployments");
+  const onPlanner = pathname === "/" || pathname.startsWith("/p/");
 
   return (
     <nav className="topbar" aria-label="主导航">
@@ -27,7 +28,7 @@ function Topbar() {
         <span className="topbar__cursor" aria-hidden="true" />
       </NavLink>
       <div className="topbar__tabs">
-        <NavLink to="/" end className={({ isActive }) => `topbar__tab${isActive ? " is-current" : ""}`}>
+        <NavLink to="/" className={() => `topbar__tab${onPlanner ? " is-current" : ""}`}>
           新建发布
         </NavLink>
         <NavLink to="/deployments" className={() => `topbar__tab${onDeployments ? " is-current" : ""}`}>

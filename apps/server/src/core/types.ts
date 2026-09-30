@@ -1,10 +1,9 @@
-import type { Country, LogStream } from "@shipyard/shared";
+import type { Country, Environment, Grouping, LogStream } from "@shipyard/shared";
 
 export interface SshConfig {
   user: string;
   port: number;
   privateKeyPath: string; // absolute; resolved against the config file's directory
-  remotePathTemplate: string; // must contain the {server} placeholder
   keepPrevious: boolean; // keep the replaced dist as `<remotePath>.prev` (rollback insurance)
 }
 
@@ -12,6 +11,7 @@ export interface BuildConfig {
   install: string; // e.g. "bun install"
   build: string; // e.g. "bun run build"
   dist: string; // e.g. "dist"
+  node: string | null; // key into `runtimes.node`; null = the image's default node
 }
 
 export interface ServerConfig {
@@ -38,13 +38,54 @@ export interface NotifyConfig {
   feishu?: FeishuNotify;
 }
 
+// One token per git host, handed to `git clone` through a credential helper so
+// repo URLs in config, logs and the database never carry it.
+export interface GitCredential {
+  host: string; // lower-case hostname, e.g. codeup.aliyun.com
+  username: string;
+  token: string;
+}
+
+export interface GitAuth {
+  username: string;
+  token: string;
+}
+
+// Which node the install / build commands see. `bin` goes first on PATH.
+export interface Toolchain {
+  node: string | null; // label from runtimes.node; null = default
+  nodeBin: string | null;
+}
+
+export interface EnvConfig extends Environment {
+  build: BuildConfig; // global defaults ← project ← environment
+}
+
+export interface CountryConfig extends Country {
+  environments: EnvConfig[];
+}
+
+export interface ProjectConfig {
+  key: string; // file name under projects/; stored with every deployment
+  name: string;
+  order: number;
+  grouping: Grouping;
+  repos: Record<string, string>; // repo key -> git url
+  countries: CountryConfig[]; // grouping "country"
+  environments: EnvConfig[]; // every environment, in config order
+  // Set when the project's file currently fails validation: the project keeps
+  // its last good content (if any) and refuses new deployments.
+  error: string | null;
+}
+
 export interface AppConfig {
   server: ServerConfig;
   access: AccessConfig;
   ssh: SshConfig;
-  build: BuildConfig;
-  repos: Record<string, string>; // repo key -> git url
-  countries: Country[];
+  git: GitCredential[];
+  runtimes: { node: Record<string, string> }; // node label -> bin directory
+  build: BuildConfig; // defaults for every project
+  projects: ProjectConfig[];
   notify?: NotifyConfig;
 }
 
@@ -56,11 +97,13 @@ export interface EnvSpec {
   server: string;
   host: string;
   repoKey: string;
-  repoUrl: string; // raw — may carry credentials; never log or persist unredacted
+  repoUrl: string; // may carry credentials (legacy config); never log or persist unredacted
   remotePath: string;
   installCmd: string;
   buildCmd: string;
   dist: string;
+  toolchain: Toolchain;
+  gitAuth: GitAuth | null; // secret; only ever passed to `git clone`
 }
 
 export interface SshCredentials {

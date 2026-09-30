@@ -13,6 +13,7 @@ Bun workspaces 单仓：`packages/shared`（前后端共用）、`apps/server`�
 - `packages/shared` 必须能在浏览器里跑：不许引用 `node:*`、Bun API 或任何终端库。
 - 进度状态只从事件推导：服务端和前端都用 `reduceProgress` 回放 `ProgressEvent`，不要另写一套状态映射。新增状态先改 reducer 和它的测试。
 - `runPipeline` 永不抛异常，失败和取消都折叠进 `EnvOutcome`。
-- 仓库地址可能带凭据：写日志、写库、返回接口前都要过 `redactUrl`。`/api/config` 永远不返回 ssh / notify / access。
+- Git 令牌只放在 `config.yaml` 的 `git.credentials`，克隆时经 `gitAuthEnv` 的凭据助手传给 git，不拼进地址。旧配置的仓库地址仍可能带凭据：写日志、写库、返回接口前都要过 `redactUrl`。`/api/config` 永远不返回 ssh / git / notify / access，也不返回仓库地址。
+- 配置分两层：`data/config.yaml`（全局）+ `data/projects/<key>.yaml`（每个项目一个）。项目 key 会写进发布记录，不要改名。
 - 所有会改变状态的接口都是 POST + JSON，并挂 `guardWrite`（Origin / Host + IP 白名单）。不要开 CORS。
 - 前端样式遵守磷光设计体系（`docs/design/`）：颜色只用 `--c-*` 变量，绿色文字和线条用 `--c-accent-ink`，像素字号只用 12 的倍数，间距用 6 的倍数，不用圆角和投影。`apps/web/src/styles/phosphor.css` 是设计体系原文件，不要改；页面样式写在 `app.css`。

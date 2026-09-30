@@ -9,6 +9,7 @@ import {
   formatDuration,
   isDeploymentActive,
   sanitizeText,
+  scopeLabel,
   shortSha,
   taskCounts,
   taskElapsed,
@@ -18,6 +19,7 @@ import { useCanExecute } from "../components/Layout.tsx";
 import { LogViewer } from "../components/LogViewer.tsx";
 import { DeploymentStatusTag, Loading, Notice, NotifyValue, PageHead, Steps, TaskIcon, type StepState } from "../components/ui.tsx";
 import { useOperatorName } from "../lib/operator.ts";
+import { plannerUrl as plannerFor } from "../lib/project.ts";
 import { useDeploymentStream } from "../lib/sse.ts";
 import { formatDateTime, useNow, useSpinner } from "../lib/time.ts";
 
@@ -67,7 +69,7 @@ export function DeploymentDetail() {
   return (
     <>
       <PageHead
-        title={<>任务 {d.id} · {d.countryName}</>}
+        title={<>任务 {d.id} · {scopeLabel(d.projectName, d.countryName)}</>}
         meta={
           <>
             {d.envCount} 个环境 · 发起人 {d.operatorName ?? "未填写"}（{d.operatorIp}）· {formatDateTime(d.createdAt)} ·{" "}
@@ -270,7 +272,7 @@ function ResultPanel({ detail, onViewLog }: { detail: Detail; onViewLog: (i: num
     },
   });
   const again = useMutation({
-    mutationFn: () => api.create({ countryCode: d.countryCode, envNames: d.envNames, operatorName: operator.trim() || undefined }),
+    mutationFn: () => api.create({ project: d.projectKey, countryCode: d.countryCode, envNames: d.envNames, operatorName: operator.trim() || undefined }),
     onSuccess: ({ id }) => {
       void queryClient.invalidateQueries({ queryKey: ["deployments"] });
       navigate(`/deployments/${id}`);
@@ -281,7 +283,7 @@ function ResultPanel({ detail, onViewLog }: { detail: Detail; onViewLog: (i: num
   const retryable = detail.envs.filter((e) => e.status === "error" || e.status === "cancelled" || e.status === "interrupted").length;
   const total = d.startedAt && d.finishedAt ? formatDuration(d.finishedAt - d.startedAt) : "—";
   const mutErr = retry.error ?? again.error;
-  const plannerUrl = `/?country=${encodeURIComponent(d.countryCode)}&envs=${encodeURIComponent(d.envNames.join("\u0001"))}&step=2`;
+  const plannerUrl = plannerFor(d.projectKey, d.countryCode, d.envNames);
 
   return (
     <section style={{ marginBottom: "var(--s-2)" }}>
@@ -343,7 +345,7 @@ function ResultPanel({ detail, onViewLog }: { detail: Detail; onViewLog: (i: num
           {again.isPending ? "发起中…" : "同样的环境再发一次"}
         </button>
         <Link className="btn btn--ghost" to={plannerUrl}>调整后再发</Link>
-        <Link className="btn btn--ghost" to="/">新建发布</Link>
+        <Link className="btn btn--ghost" to={`/p/${d.projectKey}`}>新建发布</Link>
       </div>
     </section>
   );

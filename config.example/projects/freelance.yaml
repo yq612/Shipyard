@@ -1,0 +1,14 @@
+# 项目文件：data/projects/<项目 key>.yaml。文件名就是项目 key，会写进发布记录，定了就不要改。
+# 自由职业：不分组。两个环境目录相同，但在不同主机上。
+name: 自由职业
+order: 40
+
+build:
+  build: "bun run build --mode production"   # 参数接到脚本最后的 vite build 后面
+
+repos:
+  site: "https://codeup.aliyun.com/667a81f4fd3acd0ce9015eca/freelancer-website.git"
+
+environments:
+  - { name: 主站, branch: main, repo: site, host: 47.236.120.228, remotePath: /home/freelancer-web/dist }
+  - { name: BD Kajlink, branch: BD-kajlink, repo: site, host: 43.106.155.15, remotePath: /home/freelancer-web/dist }

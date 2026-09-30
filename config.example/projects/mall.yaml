@@ -1,0 +1,13 @@
+# 项目文件：data/projects/<项目 key>.yaml。文件名就是项目 key，会写进发布记录，定了就不要改。
+# 定制商城：不分组。mall-single 的两个品牌分支发布到同一台机器的不同目录。
+name: 定制商城
+order: 30
+
+repos:
+  mall-single: "https://codeup.aliyun.com/667a81f4fd3acd0ce9015eca/Eshop/mall-single.git"
+  mall-admin: "https://codeup.aliyun.com/667a81f4fd3acd0ce9015eca/Eshop/mall-admin.git"
+
+environments:
+  - { name: AuraBotanical 商城, branch: eg/AuraBotanical, repo: mall-single, host: 47.236.15.95, remotePath: /home/mall-web/aurabotani/dist }
+  - { name: AuWagyuClub 商城, branch: au/AuWagyuClub, repo: mall-single, host: 47.236.15.95, remotePath: /home/mall-web/beef.aurabotani.com/dist }
+  - { name: AuraBotanical 后台, branch: main, repo: mall-admin, host: 47.236.15.95, remotePath: /home/mall-admin/aurabotani/dist }

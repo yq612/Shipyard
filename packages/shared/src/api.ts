@@ -2,6 +2,7 @@
 import type {
   DeploymentStatus,
   Environment,
+  Grouping,
   LogLine,
   NotifyStatus,
   ProgressEvent,
@@ -63,7 +64,7 @@ export interface EnvLastDeploy {
 }
 
 export interface EnvView extends Environment {
-  remotePath: string;
+  node: string | null; // runtimes.node label; null = the image's node
   busy: EnvHolder | null;
   last: EnvLastDeploy | null;
 }
@@ -75,18 +76,32 @@ export interface CountryView {
   busyCount: number;
 }
 
+export interface ProjectView {
+  key: string;
+  name: string;
+  grouping: Grouping;
+  countries: CountryView[]; // grouping "country"
+  environments: EnvView[]; // grouping "none"; see projectEnvs() for every environment
+  envCount: number;
+  busyCount: number;
+  // Set when the project's file fails validation: the view shows its last good
+  // environments (if any) and new deployments of it are refused.
+  error: string | null;
+}
+
 export interface ConfigView {
-  countries: CountryView[];
-  repos: Record<string, string>; // credentials redacted
-  build: { install: string; build: string; dist: string };
+  projects: ProjectView[];
   maxConcurrent: number;
-  // Set when config.yaml currently fails validation; the view then shows the
+  // Set when config.yaml itself fails validation; the view then shows the
   // last good config and new deployments are refused.
   configError: string | null;
 }
 
+// A deployment targets environments of one project, and for projects grouped
+// by country, of one country (`countryCode`; omitted otherwise).
 export interface PlanRequest {
-  countryCode: string;
+  project: string;
+  countryCode?: string | null;
   envNames: string[];
 }
 
@@ -98,22 +113,22 @@ export interface PlanStep {
 
 export interface PlanEnv extends Environment {
   repoUrl: string; // credentials redacted
-  remotePath: string;
+  node: string | null;
   sshTarget: string; // user@host:port
   busy: EnvHolder | null;
   steps: PlanStep[];
 }
 
 export interface PlanResponse {
-  countryCode: string;
-  countryName: string;
+  project: string;
+  projectName: string;
+  countryCode: string | null;
+  countryName: string | null;
   maxConcurrent: number;
   envs: PlanEnv[];
 }
 
-export interface CreateDeploymentRequest {
-  countryCode: string;
-  envNames: string[];
+export interface CreateDeploymentRequest extends PlanRequest {
   operatorName?: string;
 }
 
@@ -131,8 +146,10 @@ export interface CancelResult {
 
 export interface DeploymentSummary {
   id: number;
-  countryCode: string;
-  countryName: string;
+  projectKey: string;
+  projectName: string;
+  countryCode: string | null; // null for projects without countries
+  countryName: string | null;
   status: DeploymentStatus;
   operatorName: string | null;
   operatorIp: string;
@@ -161,6 +178,7 @@ export interface DeploymentEnvView {
   installCmd: string;
   buildCmd: string;
   dist: string;
+  node: string | null;
   status: TaskStatus;
   failedStage: Stage | null;
   errorSummary: string | null;
@@ -182,6 +200,7 @@ export interface DeploymentDetail {
 export interface DeploymentListQuery {
   page?: number;
   pageSize?: number;
+  project?: string;
   country?: string;
   env?: string;
   status?: DeploymentStatus;

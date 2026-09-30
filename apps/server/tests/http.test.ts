@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { createApp } from "../src/http/app.ts";
-import { CONFIG_YAML, setupService, until, type TestEnv } from "./helpers.ts";
+import { CONFIG_YAML, setupService, until, type TestEnv, topup } from "./helpers.ts";
 
 let env: TestEnv;
 afterEach(() => env?.cleanup());
@@ -72,8 +72,9 @@ describe("read endpoints", () => {
     expect(text).not.toContain("privateKey");
     expect(text).not.toContain("allowIps");
     const cfg = JSON.parse(text);
-    expect(cfg.countries.map((c: any) => c.code)).toEqual(["PK", "MX"]);
-    expect(cfg.repos.out).toBe("https://***@codeup.example.com/out.git");
+    expect(cfg.projects.map((p: any) => p.key)).toEqual(["topup"]);
+    expect(cfg.projects[0].countries.map((c: any) => c.code)).toEqual(["PK", "MX"]);
+    expect(text).not.toContain("codeup.example.com/out.git"); // repo URLs are not part of the view
   });
 
   test("protectReads locks read endpoints to the allowlist", async () => {
@@ -86,7 +87,7 @@ describe("read endpoints", () => {
 
   test("plan is available to readers", async () => {
     const { call } = setup({ ip: "198.51.100.1" });
-    const res = await call("POST", "/api/deployments/plan", { body: { countryCode: "PK", envNames: ["QuickBuy 环境"] } });
+    const res = await call("POST", "/api/deployments/plan", { body: { project: "topup", countryCode: "PK", envNames: ["QuickBuy 环境"] } });
     expect(res.status).toBe(200);
     expect((await json(res)).envs).toHaveLength(1);
   });
@@ -100,7 +101,7 @@ describe("read endpoints", () => {
 });
 
 describe("write protection", () => {
-  const BODY = { countryCode: "PK", envNames: ["QuickBuy 环境"], operatorName: "  张三  " };
+  const BODY = { project: "topup", countryCode: "PK", envNames: ["QuickBuy 环境"], operatorName: "  张三  " };
 
   test("allowlisted IP with same-origin JSON can start a deployment", async () => {
     const { call } = setup();
@@ -204,7 +205,7 @@ describe("write protection", () => {
 describe("SSE", () => {
   test("progress stream: snapshot first, then progress, then end", async () => {
     const { call } = setup();
-    const { id } = await json(await call("POST", "/api/deployments", { body: { countryCode: "PK", envNames: ["QuickBuy 环境"] } }));
+    const { id } = await json(await call("POST", "/api/deployments", { body: { project: "topup", countryCode: "PK", envNames: ["QuickBuy 环境"] } }));
     const res = await call("GET", `/api/deployments/${id}/events`);
     expect(res.headers.get("content-type")).toContain("text/event-stream");
     expect(res.headers.get("x-accel-buffering")).toBe("no");
@@ -224,7 +225,7 @@ describe("SSE", () => {
 
   test("a finished deployment sends its final snapshot and ends", async () => {
     const { call } = setup();
-    const { id } = await json(await call("POST", "/api/deployments", { body: { countryCode: "PK", envNames: ["QuickBuy 环境"] } }));
+    const { id } = await json(await call("POST", "/api/deployments", { body: { project: "topup", countryCode: "PK", envNames: ["QuickBuy 环境"] } }));
     env.pipeline.pass("PK-QuickBuy");
     await until(() => !env.service.isActive(id));
     await env.service.idle();
@@ -243,7 +244,7 @@ describe("SSE", () => {
       return { ok: true };
     };
     const app = createApp({ service: env.service, logs: env.logs, config: env.config, socketIp: () => "127.0.0.1" });
-    const { id } = env.service.create("PK", ["QuickBuy 环境"], { ip: "127.0.0.1", name: null, userAgent: null });
+    const { id } = env.service.create(topup("PK", ["QuickBuy 环境"]), { ip: "127.0.0.1", name: null, userAgent: null });
     env.pipeline.pass("PK-QuickBuy");
     await until(() => !env.service.isActive(id));
     expect(env.service.hasPendingEnd(id)).toBe(true);
@@ -257,7 +258,7 @@ describe("SSE", () => {
 
   test("log stream: tail, live lines, end; plain and download modes", async () => {
     const { call } = setup();
-    const { id } = await json(await call("POST", "/api/deployments", { body: { countryCode: "PK", envNames: ["QuickBuy 环境"] } }));
+    const { id } = await json(await call("POST", "/api/deployments", { body: { project: "topup", countryCode: "PK", envNames: ["QuickBuy 环境"] } }));
     await until(() => env.pipeline.calls.length === 1);
     const res = await call("GET", `/api/deployments/${id}/envs/0/logs?follow=1`);
     setTimeout(() => env.pipeline.pass("PK-QuickBuy"), 20);
