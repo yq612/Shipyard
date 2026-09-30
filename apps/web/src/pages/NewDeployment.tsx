@@ -6,7 +6,7 @@ import { STAGE_NAMES, TASK_STATUS_NAMES, shortSha } from "@shipyard/shared";
 import { ApiError, api, errorMessage } from "../api.ts";
 import { CountryCard } from "../components/CountryCard.tsx";
 import { useCanExecute } from "../components/Layout.tsx";
-import { CheckIcon, Loading, Notice, PageHead, Steps, type StepState } from "../components/ui.tsx";
+import { CheckIcon, CrossIcon, Loading, Notice, PageHead, Steps, type StepState } from "../components/ui.tsx";
 import { useOperatorName } from "../lib/operator.ts";
 import { pollEvery, usePollStopped } from "../lib/poll.ts";
 import { formatDateTime } from "../lib/time.ts";
@@ -135,7 +135,7 @@ function LastDeploy({ env }: { env: EnvView }) {
   if (last.status === "error" || last.status === "interrupted") {
     return (
       <a className="link" href={href} onClick={(e) => e.stopPropagation()}>
-        {when} <span className="err">✗</span> {last.failedStage ? STAGE_NAMES[last.failedStage] : TASK_STATUS_NAMES[last.status]}
+        {when} <span className="err"><CrossIcon /></span> {last.failedStage ? STAGE_NAMES[last.failedStage] : TASK_STATUS_NAMES[last.status]}
       </a>
     );
   }

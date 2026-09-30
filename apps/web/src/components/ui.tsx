@@ -17,10 +17,14 @@ export function PageHead({ title, meta, actions }: { title: ReactNode; meta?: Re
   );
 }
 
-// Pixel check mark (assets/check.svg as a mask, so it takes the text colour);
-// the ✔ glyph renders too small in the pixel font.
+// Pixel check / cross (assets/*.svg as a mask, so they take the text colour);
+// the ✔ ✗ glyphs render too small in the pixel font.
 export function CheckIcon() {
   return <span className="ico-check" aria-hidden="true" />;
+}
+
+export function CrossIcon() {
+  return <span className="ico-cross" aria-hidden="true" />;
 }
 
 export type StepState = "todo" | "current" | "done" | "error";
@@ -91,7 +95,7 @@ export function TaskIcon({ status }: { status: TaskStatus }) {
     case "done":
       return <span className="task__icon ok" aria-label="成功"><CheckIcon /></span>;
     case "error":
-      return <span className="task__icon err" aria-label="失败">✗</span>;
+      return <span className="task__icon err" aria-label="失败"><CrossIcon /></span>;
     case "cancelled":
       return <span className="task__icon muted" aria-label="已取消">■</span>;
     case "interrupted":
@@ -110,7 +114,7 @@ export function NotifyValue({ status, error }: { status: NotifyStatus | null; er
 }
 
 export function Notice({ tone = "info", children }: { tone?: "info" | "warn" | "err" | "ok"; children: ReactNode }) {
-  const icon = tone === "err" ? "✗" : tone === "warn" ? "!" : tone === "ok" ? <CheckIcon /> : ">";
+  const icon = tone === "err" ? <CrossIcon /> : tone === "warn" ? "!" : tone === "ok" ? <CheckIcon /> : ">";
   return (
     <div className={`notice notice--${tone}`} role={tone === "err" ? "alert" : "status"}>
       <span className="notice__icon" aria-hidden="true">{icon}</span>

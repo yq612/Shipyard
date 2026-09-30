@@ -89,8 +89,10 @@ button.step:hover .step__no { color: inherit; }
 .mono { font-family: var(--f-body); }
 .pixel { font: 400 var(--t-12)/18px var(--f-pixel); }
 .nowrap { white-space: nowrap; }
-/* 对勾：像素字里的 ✔ 太小，改用 assets/check.svg 当蒙版，颜色跟随文字 */
-.ico-check, .task__stage.is-done::before { display: inline-block; width: 12px; height: 12px; vertical-align: middle; background-color: currentColor; mask: url("../assets/check.svg") center / contain no-repeat; }
+/* 对勾 / 叉：像素字里的 ✔ ✗ 太小，改用 assets/*.svg 当蒙版，颜色跟随文字 */
+.ico-check, .ico-cross, .task__stage.is-done::before, .task__stage.is-error::before { display: inline-block; width: 12px; height: 12px; vertical-align: middle; background-color: currentColor; mask: center / contain no-repeat; }
+.ico-check, .task__stage.is-done::before { mask-image: url("../assets/check.svg"); }
+.ico-cross, .task__stage.is-error::before { mask-image: url("../assets/cross.svg"); }
 .ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
 .grow { flex: 1; min-width: 0; }
@@ -259,7 +261,7 @@ button.step:hover .step__no { color: inherit; }
 .task__stage.is-done::before { content: ""; margin-right: 3px; background-color: var(--c-phosphor); }
 .task__stage.is-running { color: var(--c-accent-ink); }
 .task__stage.is-error { color: var(--c-red); }
-.task__stage.is-error::before { content: "✗"; margin-right: 3px; }
+.task__stage.is-error::before { content: ""; margin-right: 3px; }
 .task__stage.is-cancelled::before { content: "■"; margin-right: 3px; }
 .task__time { font-size: var(--t-12); color: var(--c-ink-2); text-align: right; font-variant-numeric: tabular-nums; }
 .task__act { justify-self: end; }
