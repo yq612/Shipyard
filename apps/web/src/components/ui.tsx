@@ -77,13 +77,13 @@ export function TaskStatusBadge({ status }: { status: TaskStatus }) {
 }
 
 const DEPLOY_TONE: Record<DeploymentStatus, string> = {
-  queued: "tag",
+  queued: "tag tag--solid",
   running: "tag tag--accent",
-  succeeded: "tag tag--ok",
-  partial: "tag tag--warn",
-  failed: "tag tag--err",
-  cancelled: "tag",
-  interrupted: "tag tag--warn",
+  succeeded: "tag tag--solid tag--accent",
+  partial: "tag tag--solid tag--warn",
+  failed: "tag tag--solid tag--err",
+  cancelled: "tag tag--solid",
+  interrupted: "tag tag--solid tag--warn",
 };
 
 export function DeploymentStatusTag({ status, small }: { status: DeploymentStatus; small?: boolean }) {

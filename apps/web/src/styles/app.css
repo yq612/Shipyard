@@ -19,6 +19,10 @@
   --c-line-strong: #68725F;
   --scan-screen: repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0, 0, 0, .05) 2px 3px);
   --vignette: radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, .1) 100%);
+  /* 实心标签的底色（见 .tag--solid）。暗色主题的信号色本来就亮，直接铺 */
+  --c-mute-fill: var(--c-line);
+  --c-amber-fill: var(--c-amber);
+  --c-red-fill: var(--c-red);
 }
 
 /* ---------- 亮色主题减负 ----------
@@ -34,6 +38,11 @@
   --c-ink-2: #343B2A;
   --c-ink-3: #474E3A;
   --scan-screen: repeating-linear-gradient(to bottom, transparent 0 2px, rgba(30, 36, 22, .05) 2px 3px);
+  /* 实心标签的底色。--c-amber / --c-red 是给浅底文字压暗的色，铺成色块发闷；
+     填充改用和暗色主题同一档的亮色，上面压深墨字，跟亮绿填充一个做法 */
+  --c-mute-fill: #D3D8C4;
+  --c-amber-fill: #F5A524;
+  --c-red-fill: #FA5A44;
 }
 
 /* ---------- 鼠标指针 ----------
@@ -162,6 +171,13 @@ button.step:hover .step__no { color: inherit; }
 .tag--ok { color: var(--c-phosphor); border-color: var(--c-phosphor); }
 .tag--warn { color: var(--c-amber); border-color: var(--c-amber); }
 .tag--err { color: var(--c-red); border-color: var(--c-red); }
+/* 实心标签：状态色铺底、深墨字，列表里扫一眼就能分出成败。做成链接时悬停用文字色反显 */
+.tag--solid { --tag-fill: var(--c-mute-fill); color: var(--c-ink-2); background: var(--tag-fill); border-color: var(--tag-fill); }
+.tag--solid.tag--accent { --tag-fill: var(--c-accent); color: var(--c-on-accent); }
+.tag--solid.tag--warn { --tag-fill: var(--c-amber-fill); color: var(--c-on-accent); }
+.tag--solid.tag--err { --tag-fill: var(--c-red-fill); color: var(--c-on-accent); }
+a.tag--solid { text-decoration: none; transition: var(--tr-hover); }
+a.tag--solid:hover { color: var(--c-screen); background: var(--c-ink); border-color: var(--c-ink); }
 .tag--sm { padding: 0 var(--s-1); letter-spacing: 1px; }
 .tag + .tag { margin-left: var(--s-1); }
 

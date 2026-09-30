@@ -335,11 +335,11 @@ function EnvStep({
                   <td className="nowrap"><LastDeploy env={e} /></td>
                   <td className="nowrap">
                     {e.busy ? (
-                      <a className="link warn" href={`/deployments/${e.busy.deploymentId}`} onClick={(ev) => ev.stopPropagation()}>
+                      <a className="tag tag--solid tag--warn tag--sm" href={`/deployments/${e.busy.deploymentId}`} onClick={(ev) => ev.stopPropagation()}>
                         占用：#{e.busy.deploymentId}
                       </a>
                     ) : (
-                      <span className="status">空闲</span>
+                      <span className="tag tag--solid tag--sm">空闲</span>
                     )}
                   </td>
                 </tr>
