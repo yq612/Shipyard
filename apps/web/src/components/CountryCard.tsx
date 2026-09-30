@@ -11,6 +11,10 @@ function byCode(files: Record<string, string>): Map<string, string> {
 const FLAG_URLS = byCode(FLAGS);
 const MAP_URLS = byCode(MAPS);
 
+export function flagUrl(code: string): string | undefined {
+  return FLAG_URLS.get(code);
+}
+
 export function CountryCard({ country, current, onPick }: { country: CountryView; current: boolean; onPick: (code: string) => void }) {
   const flag = FLAG_URLS.get(country.code);
   const map = MAP_URLS.get(country.code);

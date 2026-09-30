@@ -138,6 +138,9 @@ export function validateProject(key: string, raw: unknown, globals: Globals, fal
   const name = String(req(r, "name", "root"));
   const order = r.order == null ? 100 : Number(r.order);
   if (!Number.isFinite(order)) throw new ConfigError("order 必须是数字");
+  // Only the web knows the icon set (assets/projects/); an unknown name falls back to its default there.
+  const icon = r.icon == null ? null : String(r.icon);
+  if (icon != null && !/^[a-z0-9-]+$/.test(icon)) throw new ConfigError(`icon 只能用小写字母、数字和短横线（当前：${icon}）`);
 
   if (r.countries != null && r.environments != null) throw new ConfigError("countries 和 environments 只能写一个");
   const grouping: Grouping = r.grouping ?? (r.countries != null ? "country" : "none");
@@ -183,7 +186,7 @@ export function validateProject(key: string, raw: unknown, globals: Globals, fal
     dirs.set(lockKey(e.host, e.remotePath), e.name);
   }
 
-  return { key, name, order, grouping, repos: repoUrls, countries, environments, error: null };
+  return { key, name, order, icon, grouping, repos: repoUrls, countries, environments, error: null };
 }
 
 type GlobalConfig = Omit<AppConfig, "projects"> & { legacy: ProjectConfig | null };
@@ -269,7 +272,7 @@ export function validateGlobal(raw: unknown, baseDir = process.cwd()): GlobalCon
 }
 
 function erroredProject(key: string, message: string): ProjectConfig {
-  return { key, name: key, order: 100, grouping: "none", repos: {}, countries: [], environments: [], error: message };
+  return { key, name: key, order: 100, icon: null, grouping: "none", repos: {}, countries: [], environments: [], error: message };
 }
 
 function yamlOf(text: string, what: string): unknown {

@@ -69,6 +69,7 @@ export interface ProjectConfig {
   key: string; // file name under projects/; stored with every deployment
   name: string;
   order: number;
+  icon: string | null; // pixel icon in the web sidebar, see apps/web/src/assets/projects/
   grouping: Grouping;
   repos: Record<string, string>; // repo key -> git url
   countries: CountryConfig[]; // grouping "country"

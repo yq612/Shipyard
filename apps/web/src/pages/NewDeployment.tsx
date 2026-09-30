@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Navigate, NavLink, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
+import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
 import type { EnvBusyDetail, EnvView, PlanResponse, ProjectView } from "@shipyard/shared";
 import { STAGE_NAMES, TASK_STATUS_NAMES, scopeLabel, shortSha } from "@shipyard/shared";
 import { ApiError, api, errorMessage } from "../api.ts";
-import { CountryCard } from "../components/CountryCard.tsx";
+import { CountryCard, flagUrl } from "../components/CountryCard.tsx";
 import { useCanExecute } from "../components/Layout.tsx";
+import { ProjectNav } from "../components/ProjectNav.tsx";
 import { CheckIcon, CrossIcon, Loading, Notice, PageHead, Steps, type StepState } from "../components/ui.tsx";
 import { useOperatorName } from "../lib/operator.ts";
 import { pollEvery, usePollStopped } from "../lib/poll.ts";
@@ -100,85 +101,95 @@ export function NewDeployment() {
 
   const states: StepState[] = [0, 1, 2, 3, 4].map((i) => (i < effectiveStep ? "done" : i === effectiveStep ? "current" : "todo"));
   const scope = project ? scopeLabel(project.name, grouped ? (current?.name ?? null) : null) : "";
+  const pickCountry = (code: string) => update({ country: code, envs: code === country ? envs : [], step: 1 });
+
+  // Second line of each chevron: what was picked, or live progress on the current step.
+  const picked = current ? envs.filter((n) => current.environments.some((e) => e.name === n && !e.busy)).length : 0;
+  const flag = grouped && current?.code ? flagUrl(current.code) : undefined;
+  const notes: ReactNode[] = !project
+    ? []
+    : [
+        effectiveStep === 0 ? (
+          `共 ${project.countries.length} 个国家`
+        ) : grouped ? (
+          <>
+            {flag && <img className="chev__flag" src={flag} alt="" />}
+            {current?.name}
+          </>
+        ) : (
+          project.name
+        ),
+        effectiveStep === 1 ? `已选 ${picked} / ${current?.environments.length ?? 0}` : effectiveStep > 1 ? `${picked} 个环境` : null,
+        effectiveStep === 2 ? `${picked} 个环境待确认` : null,
+      ];
 
   return (
-    <>
-      <PageHead
-        title="新建发布"
-        meta={
-          !project
-            ? "选择一个项目开始。"
-            : effectiveStep === 0
-              ? `${project.name} · 选一个国家。每次发布只针对一个国家下的若干环境。`
-              : effectiveStep === 1
-                ? `${scope} · 选择要发布的环境`
-                : `${scope} · 确认每个环境接下来要执行的步骤`
-        }
-      />
-      {config.data && <ProjectTabs projects={config.data.projects} current={projectKey} />}
-      <Steps
-        states={states}
-        first={project && !grouped ? "选择项目" : undefined}
-        onStep={(i) => update({ step: i as Step })}
-      />
-
-      {config.data?.configError && (
-        <Notice tone="err">
-          配置文件校验失败，已暂停发起新发布（正在执行的任务不受影响）：{config.data.configError}
-        </Notice>
-      )}
-      {project?.error && (
-        <Notice tone="err">
-          「{project.name}」的项目配置校验失败，已暂停这个项目的新发布（正在执行的任务不受影响）：{project.error}
-        </Notice>
-      )}
-
-      {config.isError ? (
-        <Notice tone="err">
-          读取配置失败：{errorMessage(config.error)}
-          {configStopped && "。连续多次失败，已停止自动刷新，刷新页面后重试"}
-        </Notice>
-      ) : !config.data ? (
-        <Loading text="读取配置" />
-      ) : !project ? (
-        <Notice tone="err">项目「{projectKey}」不存在，可能已从配置中移除。从上面选一个项目。</Notice>
-      ) : effectiveStep === 0 ? (
-        <CountryStep project={project} selected={country} onPick={(code) => update({ country: code, envs: code === country ? envs : [], step: 1 })} />
-      ) : effectiveStep === 1 ? (
-        <EnvStep
-          scope={current!}
-          selected={envs}
-          onChange={(fn) => update({ envs: fn }, true)}
-          onBack={grouped ? () => update({ step: 0 }) : undefined}
-          onNext={() => update({ step: 2 })}
+    <div className="planner">
+      {config.data ? (
+        <ProjectNav
+          projects={config.data.projects}
+          current={projectKey}
+          country={grouped ? (current?.code ?? null) : null}
+          onCountry={pickCountry}
         />
       ) : (
-        <PlanStep project={project} scope={current!} envNames={envs} onBack={() => update({ step: 1 })} />
+        <div />
       )}
-    </>
-  );
-}
+      <div className="planner__main">
+        <PageHead
+          title="新建发布"
+          meta={
+            !project
+              ? "选择一个项目开始。"
+              : effectiveStep === 0
+                ? `${project.name} · 选一个国家。每次发布只针对一个国家下的若干环境。`
+                : effectiveStep === 1
+                  ? `${scope} · 选择要发布的环境`
+                  : `${scope} · 确认每个环境接下来要执行的步骤`
+          }
+        />
+        <Steps
+          states={states}
+          first={project && !grouped ? "选择项目" : undefined}
+          onStep={(i) => update({ step: i as Step })}
+          notes={notes}
+        />
 
-function ProjectTabs({ projects, current }: { projects: ProjectView[]; current: string }) {
-  return (
-    <nav className="ptabs" aria-label="项目">
-      {projects.map((p) => (
-        <NavLink
-          key={p.key}
-          to={`/p/${p.key}`}
-          className={`ptabs__tab${p.key === current ? " is-current" : ""}`}
-          aria-current={p.key === current ? "page" : undefined}
-        >
-          <span className="ptabs__name">{p.name}</span>
-          <span className="ptabs__count">{p.envCount}</span>
-          {p.error ? (
-            <span className="ptabs__flag err" title={p.error}>!</span>
-          ) : p.busyCount > 0 ? (
-            <span className="ptabs__flag ok" title={`${p.busyCount} 个环境发布中`}>{p.busyCount} 发布中</span>
-          ) : null}
-        </NavLink>
-      ))}
-    </nav>
+        {config.data?.configError && (
+          <Notice tone="err">
+            配置文件校验失败，已暂停发起新发布（正在执行的任务不受影响）：{config.data.configError}
+          </Notice>
+        )}
+        {project?.error && (
+          <Notice tone="err">
+            「{project.name}」的项目配置校验失败，已暂停这个项目的新发布（正在执行的任务不受影响）：{project.error}
+          </Notice>
+        )}
+
+        {config.isError ? (
+          <Notice tone="err">
+            读取配置失败：{errorMessage(config.error)}
+            {configStopped && "。连续多次失败，已停止自动刷新，刷新页面后重试"}
+          </Notice>
+        ) : !config.data ? (
+          <Loading text="读取配置" />
+        ) : !project ? (
+          <Notice tone="err">项目「{projectKey}」不存在，可能已从配置中移除。从左边选一个项目。</Notice>
+        ) : effectiveStep === 0 ? (
+          <CountryStep project={project} selected={country} onPick={pickCountry} />
+        ) : effectiveStep === 1 ? (
+          <EnvStep
+            scope={current!}
+            selected={envs}
+            onChange={(fn) => update({ envs: fn }, true)}
+            onBack={grouped ? () => update({ step: 0 }) : undefined}
+            onNext={() => update({ step: 2 })}
+          />
+        ) : (
+          <PlanStep project={project} scope={current!} envNames={envs} onBack={() => update({ step: 1 })} />
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -231,7 +242,7 @@ function EnvStep({
   const [search, setSearch] = useState("");
   const q = search.trim().toLowerCase();
   const rows = scope.environments.filter(
-    (e) => !q || [e.name, e.branch, e.remotePath, e.host, e.repo].some((v) => v.toLowerCase().includes(q)),
+    (e) => !q || [e.name, e.branch, e.host, e.repo].some((v) => v.toLowerCase().includes(q)),
   );
   // Busy envs can't be picked; drop them if they became busy after selection.
   const selectable = rows.filter((e) => !e.busy);
@@ -265,7 +276,7 @@ function EnvStep({
           <span className="visually-hidden">搜索环境</span>
           <span className="field__box">
             <span className="field__prompt" aria-hidden="true">/</span>
-            <input className="field__input" type="search" placeholder="搜索环境、分支、目录、主机" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <input className="field__input" type="search" placeholder="搜索环境、分支、主机" value={search} onChange={(e) => setSearch(e.target.value)} />
           </span>
         </label>
         <span className="toolbar__count">
@@ -293,7 +304,6 @@ function EnvStep({
               <th>环境</th>
               <th>分支</th>
               <th>主机</th>
-              <th>发布目录</th>
               <th>仓库</th>
               <th>上次发布</th>
               <th>当前状态</th>
@@ -302,7 +312,7 @@ function EnvStep({
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={8} className="muted">没有匹配「{search}」的环境</td>
+                <td colSpan={7} className="muted">没有匹配「{search}」的环境</td>
               </tr>
             )}
             {rows.map((e) => {
@@ -327,7 +337,6 @@ function EnvStep({
                   <td className="nowrap">{e.name}</td>
                   <td className="mono dim">{e.branch}</td>
                   <td className="mono dim">{e.host}</td>
-                  <td className="mono dim ellipsis" style={{ maxWidth: 312 }} title={e.remotePath}>{e.remotePath}</td>
                   <td className="nowrap">
                     <span className="tag tag--sm">{e.repo}</span>
                     {e.node && <span className="tag tag--sm" title="构建使用的 node 版本">{e.node}</span>}

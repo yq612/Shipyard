@@ -106,20 +106,72 @@
 
 .sec-title { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-2); margin: 0 0 var(--s-2); font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); }
 
-/* ---------- 步骤条：①选择国家 → ⑤完成 ---------- */
-.steps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: var(--s-4) 0; padding: 0; list-style: none; border: var(--bw) solid var(--c-ink-3); background: var(--c-screen); }
-.step { display: flex; align-items: center; gap: var(--s-2); min-width: 0; padding: var(--s-2) var(--s-3); font: 400 var(--t-14)/24px var(--f-body); color: var(--c-ink-3); }
-.step + .step { border-left: var(--bw) solid var(--c-line); }
-.step__no { display: inline-grid; place-items: center; flex: none; width: 24px; height: 24px; font: 400 var(--t-12)/1 var(--f-pixel); border: var(--bw) solid currentColor; }
-.step__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.step.is-done { color: var(--c-ink-2); }
-.step.is-done .step__no { color: var(--c-accent-ink); }
-.step.is-current { color: var(--c-on-accent); background: var(--c-accent); }
-.step.is-current .step__no { border-color: var(--c-on-accent); }
-.step.is-error { color: var(--c-red); }
-button.step { border: 0; background: transparent; text-align: left; cursor: var(--cursor-pointer, pointer); transition: var(--tr-hover); }
-button.step:hover { background: var(--c-ink); color: var(--c-screen); }
-button.step:hover .step__no { color: inherit; }
+/* ---------- 步骤条：①选择国家 → ⑤完成 ----------
+   阶梯状像素箭头：60px 高，每档 6px，往右凸 24px，尖头 12px 高。前一个的尖头插进后一个的缺口
+   （重叠 18px），斜边之间处处留 6px 缝。箭头是 clip-path 裁出来的，不能描边，状态靠底色区分：
+   走过的浅绿、当前亮绿、失败红、没到的灰。第二行只在有内容时出现，没有就只留名字、垂直居中。 */
+.chevs-wrap { container-type: inline-size; margin: var(--s-4) 0; }
+.chevs { display: flex; margin: 0; padding: 0; list-style: none; }
+.chev {
+  flex: 1 1 0; min-width: 0; height: 60px;
+  color: var(--c-ink-3); background: color-mix(in srgb, var(--c-line) 40%, var(--c-panel));
+  clip-path: polygon(
+    0 0, calc(100% - 24px) 0, calc(100% - 24px) 6px, calc(100% - 18px) 6px, calc(100% - 18px) 12px, calc(100% - 12px) 12px, calc(100% - 12px) 18px, calc(100% - 6px) 18px, calc(100% - 6px) 24px, 100% 24px,
+    100% 36px, calc(100% - 6px) 36px, calc(100% - 6px) 42px, calc(100% - 12px) 42px, calc(100% - 12px) 48px, calc(100% - 18px) 48px, calc(100% - 18px) 54px, calc(100% - 24px) 54px, calc(100% - 24px) 60px,
+    0 60px, 0 54px, 6px 54px, 6px 48px, 12px 48px, 12px 42px, 18px 42px, 18px 36px, 24px 36px, 24px 24px, 18px 24px, 18px 18px, 12px 18px, 12px 12px, 6px 12px, 6px 6px, 0 6px);
+  transition: background-color var(--dur-hover) ease-out, color var(--dur-hover) ease-out;
+}
+/* 第一个左边是平的，最后一个右边是平的 */
+.chev:first-child {
+  clip-path: polygon(
+    0 0, calc(100% - 24px) 0, calc(100% - 24px) 6px, calc(100% - 18px) 6px, calc(100% - 18px) 12px, calc(100% - 12px) 12px, calc(100% - 12px) 18px, calc(100% - 6px) 18px, calc(100% - 6px) 24px, 100% 24px,
+    100% 36px, calc(100% - 6px) 36px, calc(100% - 6px) 42px, calc(100% - 12px) 42px, calc(100% - 12px) 48px, calc(100% - 18px) 48px, calc(100% - 18px) 54px, calc(100% - 24px) 54px, calc(100% - 24px) 60px, 0 60px);
+}
+.chev:last-child {
+  clip-path: polygon(0 0, 100% 0, 100% 60px, 0 60px, 0 54px, 6px 54px, 6px 48px, 12px 48px, 12px 42px, 18px 42px, 18px 36px, 24px 36px, 24px 24px, 18px 24px, 18px 18px, 12px 18px, 12px 12px, 6px 12px, 6px 6px, 0 6px);
+}
+.chev + .chev { margin-left: -18px; }
+/* 图标加文字整体在箭头里居中；内容避开左边缺口和右边尖头（各 24px），再各留 12px */
+.chev__hit { display: flex; align-items: center; justify-content: center; gap: var(--s-2); width: 100%; height: 100%; padding: 0 var(--s-5); font: inherit; color: inherit; text-align: left; background: none; border: 0; }
+.chev:first-child .chev__hit { padding-left: var(--s-3); }
+.chev:last-child .chev__hit { padding-right: var(--s-3); }
+/* 每一步的像素图标：12×12 格子放大 2 倍 */
+.chev__icon { flex: none; width: 24px; height: 24px; background-color: currentColor; mask: center / contain no-repeat; transition: background-color var(--dur-hover) ease-out, transform var(--dur-hover) ease-out; }
+.chev__icon--1 { mask-image: url("../assets/steps/1-country.svg"); }
+.chev__icon--2 { mask-image: url("../assets/steps/2-envs.svg"); }
+.chev__icon--3 { mask-image: url("../assets/steps/3-plan.svg"); }
+.chev__icon--4 { mask-image: url("../assets/steps/4-run.svg"); }
+.chev__icon--5 { mask-image: url("../assets/steps/5-done.svg"); }
+.chev__txt { display: grid; min-width: 0; }
+/* 两行都用 18px 行高，中间不再空出一截 */
+.chev__name { font-size: var(--t-14); line-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chev__note { display: flex; align-items: center; gap: var(--s-1); font: 400 var(--t-12)/18px var(--f-pixel); white-space: nowrap; overflow: hidden; }
+.chev__flag { flex: none; width: 16px; height: 12px; outline: var(--bw) solid var(--c-line); }
+.chev.is-done { color: var(--c-ink); background: color-mix(in srgb, var(--c-accent) 26%, var(--c-panel)); }
+.chev.is-done .chev__icon { background-color: var(--c-accent-ink); }
+.chev.is-done .chev__note { color: var(--c-ink-2); }
+.chev.is-current { color: var(--c-on-accent); background: var(--c-accent); }
+.chev.is-error { color: var(--c-on-accent); background: var(--c-red-fill); }
+.chev.is-error .chev__icon { mask-image: url("../assets/bang.svg"); }
+/* 走过的步骤能点回去：悬停时绿底加深一档，第二行压成墨色，图标往左挪 3px 提示「返回」。
+   焦点框会被 clip-path 裁掉，键盘聚焦走同一套样式，名字再加点线下划线 */
+.chev__hit:focus-visible { outline: none; }
+.chev.is-done:has(.chev__hit:hover, .chev__hit:focus-visible) { background: color-mix(in srgb, var(--c-accent) 44%, var(--c-panel)); }
+.chev.is-done:has(.chev__hit:hover, .chev__hit:focus-visible) .chev__note { color: var(--c-ink); }
+.chev.is-done:has(.chev__hit:hover, .chev__hit:focus-visible) .chev__icon { transform: translateX(-3px); }
+.chev.is-done:has(.chev__hit:focus-visible) .chev__name { text-decoration: underline dotted; text-underline-offset: 4px; }
+@media (prefers-reduced-motion: reduce) { .chev, .chev__icon { transition: none; } }
+/* 按步骤条自己的宽度收：先去掉图标，再改成竖排的色块 */
+@container (max-width: 900px) {
+  .chev__icon { display: none; }
+}
+@container (max-width: 576px) {
+  .chevs { flex-direction: column; gap: var(--s-1); }
+  .chev, .chev:first-child, .chev:last-child { height: auto; min-height: 48px; clip-path: none; }
+  .chev + .chev { margin-left: 0; }
+  .chev__hit, .chev:first-child .chev__hit, .chev:last-child .chev__hit { justify-content: flex-start; padding: var(--s-1) var(--s-3); }
+  .chev__icon { display: block; }
+}
 
 /* ---------- 通用 ---------- */
 .panel { border: var(--bw) solid var(--c-line); background: var(--c-panel); min-width: 0; }
@@ -247,20 +299,33 @@ a.tag--solid:hover { color: var(--c-screen); background: var(--c-ink); border-co
 .table .num { text-align: right; font-variant-numeric: tabular-nums; }
 .table a { color: inherit; }
 
-/* ---------- 项目切换 ----------
-   一排平铺的标签，当前项目用主色反显（同 .nav__link），悬停虚线框。
-   右上角的数字是环境数；配置有误显示红色 !，有发布在跑显示绿色提示。 */
-.ptabs { display: flex; flex-wrap: wrap; gap: var(--s-1); margin-top: var(--s-4); }
-.ptabs__tab { display: inline-flex; align-items: baseline; gap: var(--s-1); padding: var(--s-1) var(--s-2); font: 400 var(--t-14)/24px var(--f-body); color: var(--c-ink-2); text-decoration: none; background: var(--c-panel); border: var(--bw) solid var(--c-line); transition: var(--tr-hover); }
-.ptabs__tab:hover { color: var(--c-ink); border-style: dotted; border-color: var(--c-accent-ink); }
-.ptabs__tab.is-current { color: var(--c-on-accent); background: var(--c-accent); border-color: var(--c-accent); }
-.ptabs__count { font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); }
-.ptabs__flag { font: 400 var(--t-12)/18px var(--f-pixel); }
-.ptabs__tab.is-current .ptabs__count, .ptabs__tab.is-current .ptabs__flag { color: inherit; }
-@media (prefers-reduced-motion: reduce) { .ptabs__tab { transition: none; } }
+/* ---------- 新建发布：左侧项目栏 + 右侧向导 ----------
+   侧栏在页面宽度以内，右侧还剩约 1030px。当前项目按国家分组时，下面展开国家树，
+   任何一步都能直接换国家。当前项左边 2px 绿线加底纹，悬停只铺浅绿，不反显。
+   右边的数字是环境数；配置有误显示红色 !，有发布在跑显示绿色方块和个数。 */
+.planner { display: grid; grid-template-columns: 216px minmax(0, 1fr); gap: var(--s-4); }
+.planner__main { min-width: 0; }
+.pnav { padding-right: var(--s-3); border-right: var(--bw) solid var(--c-line); }
+.pnav__cap { margin: var(--s-1) 0; padding-left: var(--s-2); font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); }
+.pnav__item { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; gap: var(--s-2); padding: var(--s-1) var(--s-2) var(--s-1) calc(var(--s-2) - var(--bw-strong)); font: 400 var(--t-14)/24px var(--f-body); color: var(--c-ink-2); text-decoration: none; border-left: var(--bw-strong) solid transparent; transition: var(--tr-hover); }
+.pnav__item:hover { color: var(--c-ink); background: var(--c-accent-wash); }
+.pnav__item.is-current { color: var(--c-ink); background: var(--scan-panel), var(--c-accent-wash); border-left-color: var(--c-accent-ink); }
+/* 项目图标：9×9 格子放大 2 倍 */
+.pnav__icon { width: 18px; height: 18px; background-color: var(--c-ink-3); mask: center / contain no-repeat; transition: background-color var(--dur-hover) ease-out; }
+.pnav__item:hover .pnav__icon { background-color: var(--c-ink-2); }
+.pnav__item.is-current .pnav__icon { background-color: var(--c-accent-ink); }
+.pnav__meta { display: inline-flex; align-items: center; gap: var(--s-1); font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); }
+.pnav__tree { margin: 0 0 var(--s-1); padding: 0; list-style: none; }
+.pnav__leaf { display: grid; grid-template-columns: 24px 16px minmax(0, 1fr) auto; align-items: center; gap: var(--s-1); width: 100%; padding: 0 var(--s-2) 0 var(--s-3); text-align: left; font: 400 var(--t-12)/24px var(--f-pixel); color: var(--c-ink-2); background: transparent; border: 0; transition: var(--tr-hover); }
+.pnav__leaf:hover { color: var(--c-ink); background: var(--c-accent-wash); }
+.pnav__leaf.is-current { color: var(--c-accent-ink); }
+.pnav__branch { font-family: var(--f-body); color: var(--c-ink-3); }
+.pnav__flag { width: 16px; height: 12px; outline: var(--bw) solid var(--c-line); }
+@media (prefers-reduced-motion: reduce) { .pnav__item, .pnav__icon, .pnav__leaf { transition: none; } }
 
-/* ---------- ① 国家卡片 ---------- */
-.countries { display: grid; grid-template-columns: repeat(auto-fill, minmax(204px, 1fr)); gap: var(--s-2); }
+/* ---------- ① 国家卡片 ----------
+   右侧放在侧栏旁边，最小宽度 240px：整页宽时一行 4 张，和原来一行 5 张时每张一样宽 */
+.countries { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--s-2); }
 .country { position: relative; isolation: isolate; display: grid; gap: var(--s-1); min-height: 132px; padding: var(--s-3); text-align: left; font: inherit; color: var(--c-ink); background: var(--c-panel); border: var(--bw) solid var(--c-line); cursor: var(--cursor-pointer, pointer); transition: var(--tr-hover); }
 /* 三种状态靠线型区分：默认细实线，悬停点线（像光标框住这一格），选中 2px 实线 */
 .country:hover { border-style: dotted; border-color: var(--c-accent-ink); background: var(--scan-panel), var(--c-accent-wash); }
@@ -437,8 +502,10 @@ a.tag--solid:hover { color: var(--c-screen); background: var(--c-ink); border-co
   .topbar__tabs { order: 3; flex-basis: 100%; }
   .topbar__tab { min-height: 36px; }
   .topbar__tab:first-child { padding-left: 0; }
-  .steps { grid-template-columns: 1fr; }
-  .step + .step { border-left: 0; border-top: var(--bw) solid var(--c-line); }
+  /* 侧栏收到内容上面：项目排成一行，国家树不要了（下面的国家卡片就能选） */
+  .planner { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .pnav { display: flex; flex-wrap: wrap; gap: var(--s-1); padding: 0 0 var(--s-2); border-right: 0; border-bottom: var(--bw) solid var(--c-line); }
+  .pnav__cap, .pnav__tree { display: none; }
   .task { grid-template-columns: 24px minmax(0, 1fr) auto; }
   .task__stages { grid-column: 2 / -1; grid-row: 2; }
   .task__act { grid-column: 3; grid-row: 1; }

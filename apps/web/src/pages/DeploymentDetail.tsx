@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router";
 import type { DeploymentDetail as Detail, ProgressTask } from "@shipyard/shared";
@@ -15,6 +15,7 @@ import {
   taskElapsed,
 } from "@shipyard/shared";
 import { api, errorMessage } from "../api.ts";
+import { flagUrl } from "../components/CountryCard.tsx";
 import { useCanExecute } from "../components/Layout.tsx";
 import { LogViewer } from "../components/LogViewer.tsx";
 import { DeploymentStatusTag, Loading, Notice, NotifyValue, PageHead, Steps, TaskIcon, type StepState } from "../components/ui.tsx";
@@ -63,6 +64,21 @@ export function DeploymentDetail() {
   const elapsed = (d.finishedAt ?? now) - startedAt;
   const failedAny = counts.error + counts.interrupted > 0;
   const steps: StepState[] = ["done", "done", "done", active ? "current" : "done", active ? "todo" : failedAny ? "error" : "current"];
+  const flag = d.countryCode ? flagUrl(d.countryCode) : undefined;
+  const notes: ReactNode[] = [
+    d.countryCode ? (
+      <>
+        {flag && <img className="chev__flag" src={flag} alt="" />}
+        {d.countryName}
+      </>
+    ) : (
+      d.projectName
+    ),
+    `${d.envCount} 个环境`,
+    "已确认",
+    active ? `${counts.done} / ${counts.total} 完成` : `${d.doneCount} / ${d.envCount} 成功`,
+    active ? null : DEPLOYMENT_STATUS_NAMES[d.status],
+  ];
   const sel = selected !== null ? detail.envs[selected] : undefined;
   const selTask = selected !== null ? detail.state.tasks[selected] : undefined;
 
@@ -83,7 +99,7 @@ export function DeploymentDetail() {
         }
         actions={<DeploymentStatusTag status={d.status} />}
       />
-      <Steps states={steps} />
+      <Steps states={steps} first={d.countryCode ? undefined : "选择项目"} notes={notes} />
 
       {conn === "reconnecting" && <Notice tone="warn">连接中断，正在重连…重连后会自动恢复到最新状态。</Notice>}
 

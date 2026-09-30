@@ -79,6 +79,7 @@ export interface CountryView {
 export interface ProjectView {
   key: string;
   name: string;
+  icon: string | null; // null or an unknown name: the web shows its default icon
   grouping: Grouping;
   countries: CountryView[]; // grouping "country"
   environments: EnvView[]; // grouping "none"; see projectEnvs() for every environment

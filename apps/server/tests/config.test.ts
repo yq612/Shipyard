@@ -89,6 +89,12 @@ describe("projects", () => {
     expect(() => validateProject("Bad Key", flat([env()]), GLOBALS)).toThrow(/文件名/);
     expect(() => validateProject("site", flat([env({ remotePath: undefined, server: "s" })]), GLOBALS)).toThrow(/remotePathTemplate/);
     expect(() => validateProject("site", { ...flat([]), countries: [] }, GLOBALS)).toThrow(/只能写一个/);
+    expect(() => validateProject("site", flat([env()], { icon: "Coin!" }), GLOBALS)).toThrow(/icon/);
+  });
+
+  test("icon is optional and passed through as written", () => {
+    expect(validateProject("site", flat([env()]), GLOBALS).icon).toBeNull();
+    expect(validateProject("site", flat([env()], { icon: "globe" }), GLOBALS).icon).toBe("globe");
   });
 
   test("country projects keep the template form and duplicate-code check", () => {

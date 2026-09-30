@@ -31,35 +31,57 @@ export type StepState = "todo" | "current" | "done" | "error";
 
 export const WIZARD_STEPS = ["选择国家", "选择环境", "确认执行计划", "执行中", "完成"] as const;
 
-// ① 选择国家 / 项目 → ② 选择环境 → ③ 确认执行计划 → ④ 执行中 → ⑤ 完成
+const STEP_STATE_NAMES: Partial<Record<StepState, string>> = { done: "已完成", error: "失败" };
+
+// ① 选择国家 / 项目 → ② 选择环境 → ③ 确认执行计划 → ④ 执行中 → ⑤ 完成, as pixel
+// chevrons. `notes` adds an optional second line per step: what was picked for
+// a done step, live progress for the current one.
 // Ungrouped projects have no country step: `first` renames it, and it is not
-// a step one can go back to (the project is picked above the steps).
-export function Steps({ states, onStep, first }: { states: StepState[]; onStep?: (index: number) => void; first?: string }) {
+// a step one can go back to (the project is picked in the sidebar).
+export function Steps({
+  states,
+  onStep,
+  first,
+  notes,
+}: {
+  states: StepState[];
+  onStep?: (index: number) => void;
+  first?: string;
+  notes?: ReactNode[];
+}) {
   return (
-    <ol className="steps" aria-label="发布步骤">
-      {WIZARD_STEPS.map((step, i) => {
-        const name = i === 0 && first ? first : step;
-        const state = states[i] ?? "todo";
-        const cls = `step${state === "done" ? " is-done" : state === "current" ? " is-current" : state === "error" ? " is-error" : ""}`;
-        const mark = state === "done" ? <CheckIcon /> : state === "error" ? "!" : String(i + 1);
-        const body = (
-          <>
-            <span className="step__no" aria-hidden="true">{mark}</span>
-            <span className="step__name">{name}</span>
-          </>
-        );
-        const clickable = onStep && state === "done" && !(i === 0 && first);
-        return (
-          <li key={step} style={{ display: "contents" }} aria-current={state === "current" ? "step" : undefined}>
-            {clickable ? (
-              <button type="button" className={cls} onClick={() => onStep(i)} title={`回到「${name}」`}>{body}</button>
-            ) : (
-              <div className={cls}>{body}</div>
-            )}
-          </li>
-        );
-      })}
-    </ol>
+    <div className="chevs-wrap">
+      <ol className="chevs" aria-label="发布步骤">
+        {WIZARD_STEPS.map((step, i) => {
+          const name = i === 0 && first ? first : step;
+          const state = states[i] ?? "todo";
+          const note = notes?.[i];
+          const stateName = STEP_STATE_NAMES[state];
+          const body = (
+            <>
+              <span className={`chev__icon chev__icon--${i + 1}`} aria-hidden="true" />
+              <span className="chev__txt">
+                <span className="chev__name">
+                  {name}
+                  {stateName && <span className="visually-hidden">（{stateName}）</span>}
+                </span>
+                {note ? <span className="chev__note">{note}</span> : null}
+              </span>
+            </>
+          );
+          const clickable = onStep && state === "done" && !(i === 0 && first);
+          return (
+            <li key={step} className={`chev is-${state}`} aria-current={state === "current" ? "step" : undefined}>
+              {clickable ? (
+                <button type="button" className="chev__hit" onClick={() => onStep(i)} title={`回到「${name}」`}>{body}</button>
+              ) : (
+                <div className="chev__hit">{body}</div>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </div>
   );
 }
 

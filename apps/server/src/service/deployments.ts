@@ -161,6 +161,7 @@ export class DeploymentService {
         return {
           key: project.key,
           name: project.name,
+          icon: project.icon,
           grouping: project.grouping,
           countries,
           environments,

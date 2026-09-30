@@ -160,7 +160,8 @@ notify:
 ```yaml
 # projects/topup.yaml
 name: 充值网站
-order: 10                     # 项目标签的顺序，小的在前
+order: 10                     # 侧栏里的顺序，小的在前
+icon: wallet                  # 侧栏图标：wallet / coin / globe / cart / bag / case / job / folder，不写或写错显示 folder
 grouping: country
 remotePathTemplate: "/home/topup-web/{server}/dist"
 repos:
@@ -178,6 +179,7 @@ countries:
 # projects/official.yaml
 name: 官网
 order: 20
+icon: globe
 build: { build: "bun run build --mode production" }   # 参数会接到脚本最后一条命令后面
 repos:
   site: "https://codeup.aliyun.com/<组织>/future-harvest.git"
