@@ -15,7 +15,6 @@ packages/shared   前后端共用：类型、ProgressEvent、reduceProgress（�
 apps/server       Bun + Hono：REST + SSE、调度、环境锁、SQLite、日志、飞书通知
 apps/web          Vite + React，构建后由 server 托管
 deploy/           compose 用的 Caddyfile、服务器升级脚本
-config.example/   配置示例：全局 config.yaml + 每个项目一个 projects/<项目>.yaml
 data/             运行时数据（不进 git）：config.yaml、projects/、ssh/deploy.pem、shipyard.db、logs/
 ```
 
@@ -25,7 +24,7 @@ data/             运行时数据（不进 git）：config.yaml、projects/、ss
 
 ```bash
 bun install
-mkdir -p data/ssh && cp -R config.example/. data/   # 得到 data/config.yaml 和 data/projects/
+mkdir -p data/ssh data/projects   # 按下面「配置」写 data/config.yaml 和 data/projects/*.yaml
 cp /path/to/deploy.pem data/ssh/ && chmod 600 data/ssh/deploy.pem
 bun run dev          # API :8080 + Vite :5173，127.0.0.1 默认在白名单
 bun test && bun run typecheck
@@ -46,8 +45,8 @@ bun test && bun run typecheck
 | 文件 | 内容 |
 |---|---|
 | `.env` | `SHIPYARD_DOMAIN=<域名>`；可选 `FEISHU_WEBHOOK` / `FEISHU_SECRET` |
-| `data/config.yaml` | 从 [config.example/config.yaml](config.example/config.yaml) 改，`access`、`git` 见下 |
-| `data/projects/*.yaml` | 每个项目一个文件，从 [config.example/projects/](config.example/projects) 改 |
+| `data/config.yaml` | 全局配置，见「配置」；`access` 见下 |
+| `data/projects/*.yaml` | 每个项目一个文件，见「配置」 |
 | `data/ssh/deploy.pem` | 登录目标机的私钥，`chmod 600` |
 
 其余（`shipyard.db`、`logs/`、证书）都是运行时生成的，新机器从空开始。
@@ -103,16 +102,100 @@ bun run deploy
 
 ## 配置
 
-见 [config.example/](config.example)。分两层：
+两层，都在 `data/`（`CONFIG_PATH` 可指定 `config.yaml` 的位置，`projects/` 放在它旁边）：
 
-- `config.yaml`：所有项目共用的服务设置、访问控制、SSH 身份、Git 令牌（`git.credentials`，按主机）、可选的 node 版本（`runtimes.node`）和默认构建命令
-- `projects/<项目>.yaml`：项目名、分组方式（`grouping: country` 或 `none`）、仓库、环境。文件名就是项目 key，会写进发布记录，定了不要改。构建命令、产物目录、node 版本可以在项目和单个环境上按字段覆盖
+- `config.yaml`：所有项目共用的服务设置、访问控制、SSH 身份、Git 令牌、node 版本和默认构建命令
+- `projects/<项目>.yaml`：每个项目一个文件。文件名就是项目 key，会写进发布记录，定了不要改
 
-环境的发布目录直接写 `remotePath`（至少两级的绝对路径），或者用项目的 `remotePathTemplate` 加 `server` 拼出来。任何两个环境（包括不同项目的）都不能发布到同一台主机的同一个目录。
+热加载：每次发起发布前重新读取，改环境、白名单、增删项目都不用重启。`config.yaml` 改坏了暂停所有新发布，某个项目文件改坏了只暂停这个项目，都不影响执行中的任务。
 
-旧的单文件格式（`repos` / `countries` 直接写在 `config.yaml` 里）仍然能读，会当作「充值网站」项目（key `topup`）。迁移时把这两段挪到 `projects/topup.yaml`、仓库地址里的令牌挪到 `git.credentials` 即可，发布记录会沿用。
+### config.yaml
 
-热加载：每次发起发布前重新读取；`config.yaml` 改坏了暂停所有新发布，某个项目文件改坏了只暂停这个项目，都不影响执行中的任务。
+```yaml
+server:
+  port: 8080
+  publicUrl: https://deploy.example.com  # 可选，飞书卡片「查看详情」的链接前缀
+  maxConcurrent: 3            # 所有项目加起来同时执行的环境数
+  logRetentionDays: 30        # 发布记录和日志保留天数
+
+access:                       # 线上怎么填见「部署」
+  allowIps: [127.0.0.1, ::1]  # 能发起 / 取消 / 重试的 IP，支持 CIDR
+  protectReads: false         # true：查看也要在白名单内
+  trustProxy: false           # 前面有反向代理时 true，只信任 proxyIps 转发的 X-Forwarded-For
+  proxyIps: [127.0.0.1, ::1]
+  allowedOrigins: []          # 空 = 只允许同源；上线填对外地址，防 DNS 重绑定
+
+ssh:                          # 所有项目共用
+  user: root
+  port: 22
+  privateKeyPath: ssh/deploy.pem  # 相对本文件所在目录，权限 0600
+  keepPrevious: true          # 替换时旧版本留作 <目录>.prev，方便手工回滚
+
+git:
+  credentials:                # 私有仓库的只读令牌，按主机；公开仓库不用配
+    - { host: codeup.aliyun.com, username: oauth2, token: <令牌> }             # read_repository
+    - { host: github.com, username: x-access-token, token: <细粒度令牌> }      # Contents: Read-only
+
+runtimes:
+  node: {}                    # 可选，见「部署」里的 node 版本
+  # node20: /data/runtimes/node-v20.20.2-linux-x64/bin
+
+build:                        # 默认值；项目和单个环境都能按字段覆盖
+  install: bun install
+  build: bun run build
+  dist: dist
+  # node: node20              # 不写 = 镜像自带的 node
+
+notify:
+  feishu:
+    webhook: ""               # 空 = 不推送；也可以用环境变量 FEISHU_WEBHOOK / FEISHU_SECRET
+```
+
+令牌经临时凭据助手交给 `git clone`，不出现在仓库地址、进程参数、日志和数据库里。某个主机配了令牌，就只用它；没配的主机走 git 自己的凭据（本机开发时是钥匙串，容器里没有）。
+
+### 项目文件 projects/*.yaml
+
+按国家分组，发布目录用模板拼：
+
+```yaml
+# projects/topup.yaml
+name: 充值网站
+order: 10                     # 项目标签的顺序，小的在前
+grouping: country
+remotePathTemplate: "/home/topup-web/{server}/dist"
+repos:
+  out: "https://codeup.aliyun.com/<组织>/topupasean-out/topupasean-game-website.git"
+countries:
+  - name: 巴基斯坦
+    code: PK                  # 国旗和地图按它匹配（scripts/gen-country-art.ts）
+    environments:
+      - { name: QuickBuy 环境, branch: PK-QuickBuy, server: quickbuypk, host: 47.245.116.22, repo: out }
+```
+
+不分组，直接写发布目录，按需覆盖构建设置：
+
+```yaml
+# projects/official.yaml
+name: 官网
+order: 20
+build: { build: "bun run build --mode production" }   # 参数会接到脚本最后一条命令后面
+repos:
+  site: "https://codeup.aliyun.com/<组织>/future-harvest.git"
+environments:
+  - { name: Future Harvest, branch: main, repo: site, host: 47.236.196.237, remotePath: /home/future-harvest-web/dist }
+  - name: 后台
+    branch: main
+    repo: site
+    host: 47.236.196.237
+    remotePath: /home/future-harvest-admin/dist
+    build: { build: vite build }
+```
+
+- `remotePath` 是线上目录本身：至少两级的绝对路径，末尾的 `/` 会去掉。`server`（暂存文件名）不写时取它的上一级目录名
+- 任何两个环境，包括不同项目的，都不能发布到同一台主机的同一个目录
+- 构建设置按字段合并：`config.yaml` 的 `build` ← 项目的 `build` ← 环境的 `build`；`node: default` 表示改回镜像自带的 node
+
+旧的单文件格式（`repos` / `countries` / `ssh.remotePathTemplate` 直接写在 `config.yaml` 里）仍然能读，会当作「充值网站」项目（key `topup`）。迁移时把它们挪到 `projects/topup.yaml`、仓库地址里的令牌挪到 `git.credentials` 即可，发布记录会沿用。
 
 ## 行为
 

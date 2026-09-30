@@ -42,7 +42,7 @@ async function main(): Promise<void> {
     config = new ConfigStore(CONFIG_PATH);
   } catch (e) {
     console.error(`[startup] ${e instanceof Error ? e.message : String(e)}`);
-    console.error(`[startup] 请把配置文件放到 ${CONFIG_PATH}（可参考 config.example/），或用 CONFIG_PATH 指定路径`);
+    console.error(`[startup] 请把配置文件放到 ${CONFIG_PATH}（格式见 README「配置」），或用 CONFIG_PATH 指定路径`);
     process.exit(1);
   }
   const cfg = config.get();

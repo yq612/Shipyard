@@ -37,7 +37,6 @@ RUN bun install --frozen-lockfile --production --filter @shipyard/server
 COPY packages/shared packages/shared
 COPY apps/server apps/server
 COPY --from=web /app/apps/web/dist apps/web/dist
-COPY config.example config.example
 VOLUME ["/data", "/root/.bun/install/cache"]
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s CMD bun -e "fetch('http://127.0.0.1:' + (process.env.PORT ?? 8080) + '/api/health').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"

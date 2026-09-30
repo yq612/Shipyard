@@ -2,7 +2,7 @@
 //   apps/web/src/assets/flags/<code>.svg — 4:3 flag from flag-icons (MIT, see LICENSE there)
 //   apps/web/src/assets/maps/<code>.svg  — 24×24 pixel silhouette from Natural Earth 1:50m (public domain)
 //
-//   bun run scripts/gen-country-art.ts            # every country code in config.example/ and data/ (incl. projects/)
+//   bun run scripts/gen-country-art.ts            # every country code in data/config.yaml and data/projects/
 //   bun run scripts/gen-country-art.ts PK TH      # just these
 //
 // Only what the config uses is vendored, so the build doesn't ship ~270 flags.
@@ -27,11 +27,11 @@ type Feature = { properties: Record<string, string | null>; geometry: Geometry }
 
 function configCodes(): string[] {
   const codes = new Set<string>();
-  const files = ["config.example", "data"].flatMap((dir) => {
-    const projects = join(ROOT, dir, "projects");
-    const inProjects = existsSync(projects) ? readdirSync(projects).filter((f) => f.endsWith(".yaml")).map((f) => join(projects, f)) : [];
-    return [join(ROOT, dir, "config.yaml"), ...inProjects];
-  });
+  const projects = join(ROOT, "data/projects");
+  const files = [
+    join(ROOT, "data/config.yaml"),
+    ...(existsSync(projects) ? readdirSync(projects).filter((f) => f.endsWith(".yaml")).map((f) => join(projects, f)) : []),
+  ];
   for (const path of files) {
     if (!existsSync(path)) continue;
     for (const m of readFileSync(path, "utf8").matchAll(/^\s*code:\s*([A-Za-z]{2})\s*$/gm)) codes.add(m[1]!.toUpperCase());

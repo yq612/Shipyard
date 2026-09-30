@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { parse } from "yaml";
 import {
   ConfigError,
   envSpecOf,
@@ -145,39 +144,25 @@ describe("projects", () => {
   });
 });
 
-test("the shipped examples are valid and keep all 32 environments across 4 projects", () => {
-  const dir = join(ROOT, "config.example");
-  const files = Object.fromEntries(
-    readdirSync(join(dir, "projects")).map((f) => [f.replace(/\.yaml$/, ""), readFileSync(join(dir, "projects", f), "utf8")]),
+test("the README's config snippets are valid", () => {
+  const readme = readFileSync(join(ROOT, "README.md"), "utf8");
+  const blocks = [...readme.matchAll(/```yaml\n([\s\S]*?)```/g)].map((m) => m[1]!);
+  const global = blocks.find((b) => b.startsWith("server:"))!;
+  const projects = Object.fromEntries(
+    blocks.filter((b) => b.startsWith("# projects/")).map((b) => [/^# projects\/(\w+)\.yaml/.exec(b)![1]!, b]),
   );
-  const cfg = parseConfig(readFileSync(join(dir, "config.yaml"), "utf8"), "/data", files);
-  expect(cfg.projects.map((p) => [p.key, p.error, p.environments.length])).toEqual([
-    ["topup", null, 23],
-    ["official", null, 4],
-    ["mall", null, 3],
-    ["freelance", null, 2],
+  const cfg = parseConfig(global, "/data", projects);
+  expect(cfg.projects.map((p) => [p.key, p.grouping, p.error])).toEqual([
+    ["topup", "country", null],
+    ["official", "none", null],
   ]);
-  const topup = cfg.projects[0]!;
-  const indonesia = topup.countries.find((c) => c.code === "ID");
-  expect(indonesia?.environments.some((e) => e.name === "SumberTech 环境")).toBe(false);
-  expect(indonesia?.environments.find((e) => e.name === "Solusi Transaksi 环境")).toMatchObject({
-    branch: "id/Solusi",
-    host: "8.219.130.109",
-    repo: "pro",
-    remotePath: "/home/topup-web/soltransnusantara/dist",
-  });
-  const mall = cfg.projects[2]!;
-  expect(mall.environments.map((e) => [e.host, e.remotePath, e.build.build])).toEqual([
-    ["47.236.15.95", "/home/mall-web/aurabotani/dist", "bun run build"],
-    ["47.236.15.95", "/home/mall-web/beef.aurabotani.com/dist", "bun run build"],
-    ["47.236.15.95", "/home/mall-admin/aurabotani/dist", "bun run build"],
+  expect(cfg.git.map((c) => c.host)).toEqual(["codeup.aliyun.com", "github.com"]);
+  const official = cfg.projects[1]!;
+  expect(official.environments.map((e) => [e.server, e.build.build, e.build.node])).toEqual([
+    ["future-harvest-web", "bun run build --mode production", null],
+    ["future-harvest-admin", "vite build", null],
   ]);
-  const freelance = cfg.projects[3]!;
-  expect(freelance.environments.map((e) => e.remotePath)).toEqual(["/home/freelancer-web/dist", "/home/freelancer-web/dist"]);
-  expect(new Set(freelance.environments.map((e) => e.host)).size).toBe(2);
-  // the example must not ship a webhook or real credentials
   expect(cfg.notify).toBeUndefined();
-  expect(JSON.stringify(parse(readFileSync(join(dir, "config.yaml"), "utf8")))).not.toMatch(/pt-[A-Za-z0-9]{8,}|ghp_/);
 });
 
 describe("ConfigStore", () => {
