@@ -4,7 +4,7 @@ import type { DeploymentList, DeploymentStatus, DeploymentSummary } from "@shipy
 import { DEPLOYMENT_STATUS_NAMES, formatDuration, isDeploymentActive } from "@shipyard/shared";
 import { api, errorMessage } from "../api.ts";
 import { Select } from "../components/Select.tsx";
-import { DeploymentStatusTag, Loading, Notice, PageHead } from "../components/ui.tsx";
+import { CrossIcon, DeploymentStatusTag, Loading, Notice, PageHead } from "../components/ui.tsx";
 import { pollEvery, usePollStopped } from "../lib/poll.ts";
 import { formatDateTime } from "../lib/time.ts";
 
@@ -87,7 +87,8 @@ export function Deployments() {
         />
         <Select label="时间" value={range} onChange={(v) => set("range", v)} options={RANGES.map(([k, label]) => ({ value: k, label }))} />
         {(country || env || status || range) && (
-          <button type="button" className="btn btn--ghost btn--sm" onClick={() => setParams(new URLSearchParams())}>
+          <button type="button" className="btn filters__clear" onClick={() => setParams(new URLSearchParams())}>
+            <CrossIcon />
             清除筛选
           </button>
         )}

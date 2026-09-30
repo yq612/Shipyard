@@ -187,7 +187,7 @@ button.step:hover .step__no { color: inherit; }
 .check:disabled { cursor: not-allowed; opacity: .5; }
 
 /* 下拉（components/Select.tsx）：原生 <select> 的列表改不了样式，所以自己画。
-   展开后列表贴在框下沿，两条边框叠成一条；高亮用文字色反显，已选项用主色加对勾 */
+   展开后列表贴在框下沿，两条边框叠成一条；暗色高亮用文字色反显，亮色高亮用主色填充，已选项用主色加对勾 */
 .select { position: relative; }
 .select__box { display: flex; align-items: center; gap: var(--s-2); padding: var(--s-1) var(--s-2); font: 400 var(--t-14)/24px var(--f-body); color: var(--c-ink); background: var(--c-screen); border: var(--bw) solid var(--c-line-strong); cursor: var(--cursor-pointer, pointer); user-select: none; transition: var(--tr-hover); }
 .select__box:hover { border-color: var(--c-ink-3); }
@@ -205,6 +205,7 @@ button.step:hover .step__no { color: inherit; }
 .select__opt { display: flex; align-items: center; gap: var(--s-1); padding: var(--s-1) var(--s-2); font: 400 var(--t-14)/24px var(--f-body); color: var(--c-ink-2); white-space: nowrap; cursor: var(--cursor-pointer, pointer); }
 .select__opt[aria-selected="true"] { color: var(--c-accent-ink); }
 .select__opt.is-active { background: var(--c-ink); color: var(--c-screen); }
+[data-theme="light"] .select__opt.is-active { background: var(--c-accent); color: var(--c-on-accent); }
 .select__opt[aria-disabled="true"] { color: var(--c-ink-3); cursor: not-allowed; }
 .select__mark { flex: none; display: inline-grid; place-items: center; width: 12px; }
 .select__hint { margin-left: var(--s-2); font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); }
@@ -382,6 +383,10 @@ button.step:hover .step__no { color: inherit; }
 /* ---------- 发布记录筛选 ---------- */
 .filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s-2); margin: var(--s-4) 0 var(--s-3); }
 .filters .field__label { font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); }
+/* 与下拉框同高：沿用按钮的 24px 行高，上下各留 6px。 */
+.filters__clear { padding: var(--s-1) var(--s-2); color: var(--c-amber); background: color-mix(in srgb, var(--c-amber) 8%, transparent); border-color: var(--c-amber); white-space: nowrap; }
+.filters__clear:hover { color: var(--c-screen); background: var(--c-amber); }
+.filters__clear:focus-visible { outline-color: var(--c-amber); }
 .pager { display: flex; align-items: center; justify-content: flex-end; gap: var(--s-2); margin-top: var(--s-3); font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); }
 
 .foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s-2); padding: var(--s-2) 0 var(--s-3); border-top: var(--bw) solid var(--c-line); font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); }
