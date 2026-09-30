@@ -29,11 +29,18 @@
   --c-line-strong: #949C84;
 }
 
-.page { max-width: 1320px; margin: 0 auto; padding: var(--s-3) var(--s-4) var(--s-7); }
-.page__main { margin-top: var(--s-4); }
+/* ---------- 页面骨架 ----------
+   顶栏和页脚固定，只有中间的内容区滚动。三行都预留滚动条的位置（scrollbar-gutter），
+   内容区出现滚动条时，顶栏、内容、页脚的左右边缘仍然对齐。 */
+.page { --page-w: 1272px; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100vh; height: 100dvh; }
+.page__head, .page__main, .page__foot { padding: 0 var(--s-4); scrollbar-gutter: stable; }
+.page__head, .page__foot { overflow: hidden; }
+.page__main { overflow-y: auto; }
+.page__head > *, .page__body, .page__foot > * { max-width: var(--page-w); margin: 0 auto; }
+.page__head { padding: var(--s-3) var(--s-4) var(--s-2); }
+.page__body { padding: var(--s-2) 0 var(--s-6); }
 
 /* ---------- 顶栏 ---------- */
-.topbar { position: sticky; top: 0; z-index: 20; }
 .topbar .nav__brand { display: inline-flex; align-items: center; gap: var(--s-1); }
 .topbar__prompt { color: var(--c-accent-ink); }
 /* 品牌后的窄光标：照开机动画的显像管，熄灭时先压成一条亮线再余辉褪掉，亮起时从亮线撑开 */
@@ -350,15 +357,18 @@ button.step:hover .step__no { color: inherit; }
 .filters .field__label { font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); }
 .pager { display: flex; align-items: center; justify-content: flex-end; gap: var(--s-2); margin-top: var(--s-3); font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); }
 
-.foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s-2); margin-top: var(--s-8); padding-top: var(--s-3); border-top: var(--bw) solid var(--c-line); font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); }
+.foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s-2); padding: var(--s-2) 0 var(--s-3); border-top: var(--bw) solid var(--c-line); font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); }
 
 /* ---------- 窄屏 ---------- */
 @media (max-width: 1080px) {
   .confirm { grid-template-columns: 1fr; }
 }
 @media (max-width: 760px) {
-  .page { padding: var(--s-2) var(--s-2) var(--s-6); }
-  .topbar { position: static; }
+  /* 窄屏顶栏会折成好几行，固定住太占地方：退回整页滚动 */
+  .page { display: block; height: auto; }
+  .page__head, .page__main, .page__foot { padding: 0 var(--s-2); overflow: visible; }
+  .page__head { padding: var(--s-2) var(--s-2) 0; }
+  .page__body { padding-top: var(--s-4); }
   .topbar__right { margin-left: 0; }
   .steps { grid-template-columns: 1fr; }
   .step + .step { border-left: 0; border-top: var(--bw) solid var(--c-line); }

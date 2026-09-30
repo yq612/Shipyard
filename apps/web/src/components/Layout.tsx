@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { NavLink, Outlet, useLocation } from "react-router";
 import type { ServerStatus } from "@shipyard/shared";
@@ -62,14 +63,29 @@ function Topbar() {
 }
 
 export function Layout() {
+  const main = useRef<HTMLElement>(null);
+  const { pathname } = useLocation();
+  // Start every page at its top. The content area is the scroller; on narrow
+  // screens the whole page scrolls instead (see app.css), so reset both.
+  useLayoutEffect(() => {
+    main.current?.scrollTo(0, 0);
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
   return (
     <div className="page">
-      <Topbar />
-      <main className="page__main">
-        <Outlet />
+      <header className="page__head">
+        <Topbar />
+      </header>
+      <main ref={main} className="page__main">
+        <div className="page__body">
+          <Outlet />
+        </div>
       </main>
-      <footer className="foot">
-        <span>Shipyard · 构建与发布</span>
+      <footer className="page__foot">
+        <div className="foot">
+          <span>Shipyard · 构建与发布</span>
+        </div>
       </footer>
     </div>
   );

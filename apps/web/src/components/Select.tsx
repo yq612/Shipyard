@@ -131,14 +131,18 @@ export function Select<T extends string>({
   };
 
   // Runs only as it opens: flip upwards when the list would run off the bottom
-  // of the window and there's more room above, then scroll to the highlight.
+  // of the visible content area and there's more room above, then scroll to the highlight.
   useLayoutEffect(() => {
     const root = rootRef.current;
     const list = listRef.current;
     if (!open || !root || !list) return;
     const box = root.getBoundingClientRect();
-    const below = window.innerHeight - box.bottom;
-    setUp(below < list.offsetHeight && box.top > below);
+    // The fixed header and footer cover the window's edges; on narrow screens
+    // the whole page scrolls instead and the window is the limit.
+    const view = root.closest(".page__main")?.getBoundingClientRect();
+    const below = Math.min(view?.bottom ?? Infinity, window.innerHeight) - box.bottom;
+    const above = box.top - Math.max(view?.top ?? 0, 0);
+    setUp(below < list.offsetHeight && above > below);
     reveal(list, active);
   }, [open]);
 
