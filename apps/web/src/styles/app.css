@@ -5,17 +5,20 @@
    - 像素字只用 12 的倍数，间距用 6 的倍数，不用圆角和投影
    ========================================================= */
 
-/* ---------- 暗色主题提高对比 ----------
-   原注释色在面板上只有 4.3:1，12px 像素字难认。文字和线条整体提亮
-   （墨色 18:1，次要 11.9:1，注释 7.7:1），扫描线和暗角减弱。 */
+/* ---------- 暗色主题减负 ----------
+   页面改用灰绿底，面板、下拉层逐级提亮，边框同步拉开层次。
+   保留清晰的文字色，减弱扫描线和暗角，避免屏幕边缘被重新压黑。 */
 [data-theme="dark"] {
+  --c-screen: #151714;
+  --c-panel: #1D201C;
+  --c-raised: #252923;
   --c-ink: #F2F7EA;
   --c-ink-2: #C4CCB7;
   --c-ink-3: #9DA592;
-  --c-line: #343A2D;
-  --c-line-strong: #5A6250;
-  --scan-screen: repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0, 0, 0, .08) 2px 3px);
-  --vignette: radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, .22) 100%);
+  --c-line: #3E443A;
+  --c-line-strong: #68725F;
+  --scan-screen: repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0, 0, 0, .05) 2px 3px);
+  --vignette: radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, .1) 100%);
 }
 
 /* ---------- 亮色主题减负 ----------
@@ -160,10 +163,10 @@ button.step:hover .step__no { color: inherit; }
 .tag--warn { color: var(--c-amber); border-color: var(--c-amber); }
 .tag--err { color: var(--c-red); border-color: var(--c-red); }
 .tag--sm { padding: 0 var(--s-1); letter-spacing: 1px; }
+.tag + .tag { margin-left: var(--s-1); }
 
 /* 提示条：一行说清楚发生了什么、怎么办 */
 .notice { display: flex; align-items: flex-start; gap: var(--s-2); padding: var(--s-2) var(--s-3); font-size: var(--t-14); line-height: 24px; border: var(--bw) solid var(--c-line-strong); background: var(--c-panel); color: var(--c-ink-2); }
-.tag + .tag { margin-left: var(--s-1); }
 .notice__icon { flex: none; font: 400 var(--t-12)/24px var(--f-pixel); }
 .notice--warn { border-color: var(--c-amber); color: var(--c-amber); }
 .notice--err { border-color: var(--c-red); color: var(--c-red); }
@@ -228,9 +231,6 @@ button.step:hover .step__no { color: inherit; }
 .table .num { text-align: right; font-variant-numeric: tabular-nums; }
 .table a { color: inherit; }
 
-/* ---------- ① 国家卡片 ---------- */
-.countries { display: grid; grid-template-columns: repeat(auto-fill, minmax(204px, 1fr)); gap: var(--s-2); }
-.country { position: relative; isolation: isolate; display: grid; gap: var(--s-1); min-height: 132px; padding: var(--s-3); text-align: left; font: inherit; color: var(--c-ink); background: var(--c-panel); border: var(--bw) solid var(--c-line); cursor: var(--cursor-pointer, pointer); transition: var(--tr-hover); }
 /* ---------- 项目切换 ----------
    一排平铺的标签，当前项目用主色反显（同 .nav__link），悬停虚线框。
    右上角的数字是环境数；配置有误显示红色 !，有发布在跑显示绿色提示。 */
@@ -243,6 +243,9 @@ button.step:hover .step__no { color: inherit; }
 .ptabs__tab.is-current .ptabs__count, .ptabs__tab.is-current .ptabs__flag { color: inherit; }
 @media (prefers-reduced-motion: reduce) { .ptabs__tab { transition: none; } }
 
+/* ---------- ① 国家卡片 ---------- */
+.countries { display: grid; grid-template-columns: repeat(auto-fill, minmax(204px, 1fr)); gap: var(--s-2); }
+.country { position: relative; isolation: isolate; display: grid; gap: var(--s-1); min-height: 132px; padding: var(--s-3); text-align: left; font: inherit; color: var(--c-ink); background: var(--c-panel); border: var(--bw) solid var(--c-line); cursor: var(--cursor-pointer, pointer); transition: var(--tr-hover); }
 /* 三种状态靠线型区分：默认细实线，悬停点线（像光标框住这一格），选中 2px 实线 */
 .country:hover { border-style: dotted; border-color: var(--c-accent-ink); background: var(--scan-panel), var(--c-accent-wash); }
 .country.is-current { border: var(--bw-strong) solid var(--c-accent-ink); padding: calc(var(--s-3) - 1px); background: var(--scan-panel), var(--c-accent-wash); }
