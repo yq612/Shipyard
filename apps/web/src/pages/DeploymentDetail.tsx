@@ -1,7 +1,7 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router";
-import type { DeploymentDetail as Detail, DeploymentEnvView, ProgressTask, Stage } from "@shipyard/shared";
+import type { DeploymentDetail as Detail, ProgressTask } from "@shipyard/shared";
 import {
   DEPLOYMENT_STATUS_NAMES,
   STAGES,
@@ -87,7 +87,7 @@ export function DeploymentDetail() {
 
       {conn === "reconnecting" && <Notice tone="warn">连接中断，正在重连…重连后会自动恢复到最新状态。</Notice>}
 
-      {active ? <RunningActions detail={detail} /> : <ResultPanel detail={detail} onViewLog={setSelected} />}
+      {active ? <RunningActions detail={detail} /> : <ResultPanel detail={detail} />}
 
       <TaskPanel detail={detail} now={now} selected={selected} onSelect={setSelected} active={active} />
 
@@ -159,6 +159,7 @@ function taskProgress(task: ProgressTask): number {
 
 function StageChips({ task }: { task: ProgressTask }) {
   if (task.status === "queued") return <span className="task__note">排队中（等待空闲名额）</span>;
+  if (task.status === "cancelled" && task.startedAt === undefined) return <span className="task__note">已取消（未开始）</span>;
   return (
     <span className="task__stages">
       {STAGES.map((stage) => {
@@ -258,7 +259,7 @@ function TaskPanel({
 
 // ------------------------------------------------------------ ⑤ 完成
 
-function ResultPanel({ detail, onViewLog }: { detail: Detail; onViewLog: (i: number) => void }) {
+function ResultPanel({ detail }: { detail: Detail }) {
   const d = detail.deployment;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -306,26 +307,6 @@ function ResultPanel({ detail, onViewLog }: { detail: Detail; onViewLog: (i: num
         </dl>
       </div>
 
-      <div className="table-wrap" style={{ marginTop: "var(--s-2)" }}>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>环境</th>
-              <th>结果</th>
-              <th>提交</th>
-              <th className="num">耗时</th>
-              <th>说明</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {detail.envs.map((e, i) => (
-              <ResultRow key={e.idx} env={e} task={detail.state.tasks[i]!} onViewLog={() => onViewLog(i)} />
-            ))}
-          </tbody>
-        </table>
-      </div>
-
       {mutErr && <div style={{ marginTop: "var(--s-2)" }}><Notice tone="err">{errorMessage(mutErr)}</Notice></div>}
       {!allowed && <div style={{ marginTop: "var(--s-2)" }}><Notice tone="warn">当前 IP 不在白名单，不能重试或再次发布。</Notice></div>}
 
@@ -348,40 +329,5 @@ function ResultPanel({ detail, onViewLog }: { detail: Detail; onViewLog: (i: num
         <Link className="btn btn--ghost" to={`/p/${d.projectKey}`}>新建发布</Link>
       </div>
     </section>
-  );
-}
-
-function ResultRow({ env, task, onViewLog }: { env: DeploymentEnvView; task: ProgressTask; onViewLog: () => void }) {
-  const failedStage: Stage | null = env.failedStage ?? null;
-  let note: ReactNode;
-  switch (env.status) {
-    case "done":
-      note = <span>已发布到 <span className="mono">{env.server}</span></span>;
-      break;
-    case "error":
-      note = (
-        <span className="err" title={env.errorSummary ?? ""}>
-          失败于「{failedStage ? STAGE_NAMES[failedStage] : "?"}」：{sanitizeText(env.errorSummary ?? task.error ?? "").slice(0, 80)}
-        </span>
-      );
-      break;
-    case "cancelled":
-      note = <span className="muted">已取消{failedStage ? `（在「${STAGE_NAMES[failedStage]}」阶段）` : "（未开始）"}</span>;
-      break;
-    case "interrupted":
-      note = <span className="warn">{env.errorSummary ?? "已中断"}</span>;
-      break;
-    default:
-      note = null;
-  }
-  return (
-    <tr>
-      <td className="nowrap">{env.envName}</td>
-      <td><TaskIcon status={env.status} /></td>
-      <td className="mono dim" title={env.commitMessage ?? ""}>{shortSha(env.commitSha) || "—"}</td>
-      <td className="num dim">{env.totalMs ? formatDuration(env.totalMs) : "—"}</td>
-      <td style={{ maxWidth: 520 }} className="ellipsis">{note}</td>
-      <td className="nowrap"><button type="button" className="btn btn--ghost btn--sm" onClick={onViewLog}>查看日志</button></td>
-    </tr>
   );
 }
