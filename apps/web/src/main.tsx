@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createBrowserRouter, RouterProvider } from "react-router";
 import { ApiError } from "./api.ts";
 import { Layout } from "./components/Layout.tsx";
+import { PhosphorCursor } from "./components/PhosphorCursor.tsx";
 import { PageHead } from "./components/ui.tsx";
 import { pollStopped } from "./lib/poll.ts";
 import { DeploymentDetail } from "./pages/DeploymentDetail.tsx";
@@ -42,6 +43,7 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
+    <PhosphorCursor />
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
     </QueryClientProvider>
