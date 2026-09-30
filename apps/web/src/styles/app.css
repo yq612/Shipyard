@@ -211,7 +211,8 @@ button.step:hover .step__no { color: inherit; }
 /* ---------- ① 国家卡片 ---------- */
 .countries { display: grid; grid-template-columns: repeat(auto-fill, minmax(204px, 1fr)); gap: var(--s-2); }
 .country { position: relative; isolation: isolate; display: grid; gap: var(--s-1); min-height: 132px; padding: var(--s-3); text-align: left; font: inherit; color: var(--c-ink); background: var(--c-panel); border: var(--bw) solid var(--c-line); cursor: pointer; transition: var(--tr-hover); }
-.country:hover { border-color: var(--c-accent-ink); background: var(--scan-panel), var(--c-accent-wash); }
+/* 三种状态靠线型区分：默认细实线，悬停点线（像光标框住这一格），选中 2px 实线 */
+.country:hover { border-style: dotted; border-color: var(--c-accent-ink); background: var(--scan-panel), var(--c-accent-wash); }
 .country.is-current { border: var(--bw-strong) solid var(--c-accent-ink); padding: calc(var(--s-3) - 1px); background: var(--scan-panel), var(--c-accent-wash); }
 .country__code { position: absolute; top: var(--s-2); right: var(--s-2); font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); }
 .country:hover .country__code, .country.is-current .country__code { color: var(--c-accent-ink); }
@@ -224,7 +225,10 @@ button.step:hover .step__no { color: inherit; }
 .country:hover .country__map, .country.is-current .country__map { background-color: color-mix(in srgb, var(--c-accent-ink) 40%, transparent); }
 /* 环境名不压到水印上：水印宽 72 + 离边 12 − 卡片内边距 18 */
 .country__map ~ .country__envs { padding-right: 66px; }
-.country__meta { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-2); margin-top: auto; font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); }
+.country__meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-1) var(--s-2); margin-top: auto; font: 400 var(--t-12)/18px var(--f-pixel); color: var(--c-ink-3); }
+/* 环境个数是选国家时最要紧的读数：数字放大到像素字的两倍，单位留小字。
+   缝合像素的汉字比基线低 2px（12px 字格画满到底），数字跟着下移 2px，两者底边对齐 */
+.country__count b { position: relative; top: 2px; margin-right: 3px; font: 400 var(--t-24)/24px var(--f-display); font-synthesis: none; color: var(--c-accent-ink); }
 
 /* ---------- ② 环境表格工具条 ---------- */
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin-bottom: var(--s-2); }

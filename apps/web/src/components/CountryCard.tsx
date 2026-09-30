@@ -29,7 +29,9 @@ export function CountryCard({ country, current, onPick }: { country: CountryView
       </p>
       <p className="country__envs">{country.environments.map((e) => e.name.replace(/\s*环境$/, "")).join(" · ")}</p>
       <span className="country__meta">
-        <span>{country.environments.length} 个环境</span>
+        <span className="country__count">
+          <b>{country.environments.length}</b> 个环境
+        </span>
         {country.busyCount > 0 && <span className="status status--ok">{country.busyCount} 个发布中</span>}
       </span>
     </button>
