@@ -1,5 +1,6 @@
 name: 官网
 order: 20
+icon: globe
 
 repos:
   future-harvest: "https://codeup.aliyun.com/667a81f4fd3acd0ce9015eca/future-harvest.git"
