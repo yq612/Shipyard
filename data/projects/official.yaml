@@ -1,0 +1,26 @@
+name: 官网
+order: 20
+
+repos:
+  future-harvest: "https://codeup.aliyun.com/667a81f4fd3acd0ce9015eca/future-harvest.git"
+  dyippay: "https://codeup.aliyun.com/667a81f4fd3acd0ce9015eca/DyipPay.git"
+  optivolve: "https://github.com/qq695601924-ops/optivolve-website.git"
+  vexora: "https://github.com/yq612/vexora-website.git"
+  uniprive: "https://codeup.aliyun.com/667a81f4fd3acd0ce9015eca/UNIPRIVE.git"
+
+environments:
+  - { name: Future Harvest, branch: main, repo: future-harvest, host: 47.236.196.237, remotePath: /home/future-harvest-web/dist }
+  - { name: DyipPay, branch: main, repo: dyippay, host: 43.106.118.236, remotePath: /home/topup-web/dyippay/dist }
+  - { name: UNIPRIVE, branch: main, repo: uniprive, host: 43.106.118.42, remotePath: /home/topup-web/uniprive/dist }
+  - name: Optivolve
+    branch: main
+    repo: optivolve
+    host: 47.245.108.255
+    remotePath: /home/optivolvedigital-web/dist
+    build: { build: "bun run build --mode production" }
+  - name: Vexora
+    branch: main
+    repo: vexora
+    host: 47.236.97.195
+    remotePath: /home/vexora-web/dist
+    build: { build: "bun run build --mode production" }
